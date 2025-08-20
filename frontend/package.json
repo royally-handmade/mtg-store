@@ -1,0 +1,50 @@
+{
+  "name": "mtg-marketplace-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.ts,.tsx --fix",
+    "lint:check": "eslint . --ext .vue,.js,.jsx,.ts,.tsx",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0",
+    "pinia": "^2.1.7",
+    "axios": "^1.6.8",
+    "@supabase/supabase-js": "^2.43.1",
+    "chart.js": "^4.4.2",
+    "vue-chartjs": "^5.3.1",
+    "vue-toastification": "^2.0.0-rc.5",
+    "@headlessui/vue": "^1.7.19",
+    "@heroicons/vue": "^2.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.2.8",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "@tailwindcss/forms": "^0.5.7",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.24.1",
+    "@vue/eslint-config-prettier": "^9.0.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.3",
+    "vue-tsc": "^2.0.11"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}
