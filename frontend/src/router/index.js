@@ -78,6 +78,12 @@ const routes = [
     name: 'Orders',
     component: () => import('@/views/Orders.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/scryfall-admin',
+    name: 'ScryfallAdmin',
+    component: () => import('@/views/ScryfallAdmin.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -88,22 +94,22 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'Auth', query: { redirect: to.fullPath } })
     return
   }
-  
+
   if (to.meta.requiresSeller && !authStore.isSeller) {
     next('/dashboard')
     return
   }
-  
+
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
     next('/dashboard')
     return
   }
-  
+
   next()
 })
 

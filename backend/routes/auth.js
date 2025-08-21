@@ -49,7 +49,7 @@ router.get('/profile/:user_id', async (req, res) => {
       .select('*')
       .eq('id', req.params.user_id)
       .single()
-    
+
     if (error) throw error
     res.json(data)
   } catch (error) {

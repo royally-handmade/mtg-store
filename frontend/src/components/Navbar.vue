@@ -3,14 +3,14 @@
     <div class="container mx-auto px-4">
       <div class="flex justify-between items-center h-16">
         <div class="flex items-center space-x-8">
-          <router-link to="/" class="text-2xl font-bold text-blue-600">
-            MTG Marketplace
+          <router-link to="/" class="text-1xl font-bold text-red-700">
+            Maple Card Market
           </router-link>
-          <router-link to="/cards" class="text-gray-700 hover:text-blue-600">
+          <router-link to="/cards" class="text-gray-700 hover:text-red-700">
             Browse Cards
           </router-link>
           <router-link v-if="authStore.isAuthenticated" to="/deck-builder" 
-            class="text-gray-700 hover:text-blue-600">
+            class="text-gray-700 hover:text-red-700">
             Deck Builder
           </router-link>
         </div>
@@ -20,7 +20,7 @@
           
           <!-- Wishlist Link -->
           <router-link v-if="authStore.isAuthenticated" to="/wishlist" 
-            class="relative text-gray-700 hover:text-blue-600">
+            class="relative text-gray-700 hover:text-red-700">
             <HeartIcon class="h-6 w-6" />
             <span v-if="wishlistStore.itemCount > 0" 
               class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -28,10 +28,10 @@
             </span>
           </router-link>
           
-          <router-link to="/cart" class="relative text-gray-700 hover:text-blue-600">
+          <router-link to="/cart" class="relative text-gray-700 hover:text-red-700">
             <ShoppingCartIcon class="h-6 w-6" />
             <span v-if="cartStore.itemCount > 0" 
-              class="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
               {{ cartStore.itemCount }}
             </span>
           </router-link>
@@ -39,14 +39,14 @@
           <!-- User Menu -->
           <div v-if="!authStore.isAuthenticated">
             <router-link to="/auth" 
-              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
               Sign In
             </router-link>
           </div>
           
           <div v-else class="relative">
             <Menu as="div" class="relative inline-block text-left">
-              <MenuButton class="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
+              <MenuButton class="flex items-center space-x-2 text-gray-700 hover:text-red-700">
                 <UserIcon class="h-6 w-6" />
                 <span>{{ authStore.user.email }}</span>
               </MenuButton>

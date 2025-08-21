@@ -17,22 +17,20 @@
         class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
     </div>
     <div class="p-4">
-      <TreatmentBadge
-      :treatment="card.treatment"
-      :size="sm" />
+    <TreatmentBadge :treatment="card.treatment" size="sm" />
       <h3 class="font-semibold text-lg mb-1 truncate">{{ card.name }}</h3>
       <p class="text-sm text-gray-600 mb-2">{{ card.set_number }} • {{ card.rarity }}</p>
       <div class="flex justify-between items-center">
         <span class="text-lg font-bold text-green-600">
           ${{ card.market_price || '0.00' }} CAD
         </span>
-        <button
+       <!-- <button
           @click.stop="quickAddToCart"
           :disabled="addingToCart"
           class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {{ addingToCart ? 'Adding...' : 'Quick Add' }}
-        </button>
+        </button>-->
       </div>
     </div>
   </div>

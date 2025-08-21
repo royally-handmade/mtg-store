@@ -1,16 +1,16 @@
 <template>
   <div class="space-y-12">
     <!-- Hero Section -->
-    <section class="text-center py-12 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg">
+    <section class="text-center py-12 bg-gradient-to-r from-red-600 to-violet-600 text-white rounded-lg">
       <div class="max-w-4xl mx-auto px-6">
         <h1 class="text-5xl font-bold mb-6">MTG Marketplace</h1>
         <p class="text-xl mb-8">Buy and sell Magic: The Gathering cards with confidence</p>
         <div class="flex justify-center space-x-4">
-          <router-link to="/cards" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+          <router-link to="/cards" class="bg-white text-red-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
             Browse Cards
           </router-link>
           <router-link v-if="!authStore.isAuthenticated" to="/auth" 
-            class="border-2 border-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors">
+            class="border-2 border-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-red-600 transition-colors">
             Get Started
           </router-link>
         </div>
@@ -21,7 +21,7 @@
     <section>
       <div class="flex justify-between items-center mb-8">
         <h2 class="text-3xl font-bold">Featured Cards</h2>
-        <router-link to="/cards" class="text-blue-600 hover:text-blue-800">
+        <router-link to="/cards" class="text-red-600 hover:text-red-800">
           View All →
         </router-link>
       </div>
@@ -35,7 +35,7 @@
       <h2 class="text-3xl font-bold text-center mb-8">Platform Statistics</h2>
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="text-center">
-          <div class="text-3xl font-bold text-blue-600">{{ stats.totalCards }}+</div>
+          <div class="text-3xl font-bold text-red-600">{{ stats.totalCards }}+</div>
           <div class="text-gray-600">Cards Available</div>
         </div>
         <div class="text-center">
@@ -58,8 +58,8 @@
       <h2 class="text-3xl font-bold text-center mb-12">How It Works</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div class="text-center">
-          <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MagnifyingGlassIcon class="h-8 w-8 text-blue-600" />
+          <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MagnifyingGlassIcon class="h-8 w-8 text-red-600" />
           </div>
           <h3 class="text-xl font-semibold mb-2">Browse & Search</h3>
           <p class="text-gray-600">Find the exact cards you need with our powerful search and filtering tools.</p>

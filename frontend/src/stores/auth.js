@@ -11,7 +11,8 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.user,
-    isSeller: (state) => state.profile?.role === 'seller' && state.profile?.approved,
+    isSeller: (state) => state.profile?.role === 'seller' || state.profile?.role === 'admin', 
+    isApproved: (state) => (state.profile?.role === 'seller' && state.profile?.approved) || state.profile?.role === 'admin',
     isAdmin: (state) => state.profile?.role === 'admin'
   },
 
@@ -34,7 +35,7 @@ export const useAuthStore = defineStore('auth', {
     async fetchProfile() {
       if (!this.user) return
       try {
-        const response = await api.get(`/users/profile/${this.user.id}`)
+        const response = await api.get(`auth/profile/${this.user.id}`)
         this.profile = response.data
       } catch (error) {
         console.error('Profile fetch error:', error)
