@@ -14,7 +14,7 @@ class ScryfallService {
         'User-Agent': 'MTG-Marketplace/1.0'
       }
     })
-    
+
     // Rate limiting: Scryfall allows 100 requests/second
     this.lastRequestTime = 0
     this.minInterval = 10 // 10ms between requests
@@ -32,7 +32,7 @@ class ScryfallService {
   // Search for cards by name
   async searchCards(query, options = {}) {
     await this.rateLimit()
-    
+
     const params = {
       q: query,
       unique: options.unique || 'cards',
@@ -46,6 +46,11 @@ class ScryfallService {
 
     try {
       const response = await this.axiosInstance.get('/cards/search', { params })
+      console.log(response.data.data)
+      if(response.data.data[0].card_faces.length > 0){
+        console.log(response.data.data[0].card_faces)
+      }
+
       return {
         success: true,
         data: response.data.data,
@@ -64,7 +69,7 @@ class ScryfallService {
   // Get card by exact name and set
   async getCardByNameAndSet(name, setCode) {
     await this.rateLimit()
-    
+
     try {
       const response = await this.axiosInstance.get(`/cards/named`, {
         params: {
@@ -84,7 +89,7 @@ class ScryfallService {
   // Get card by Scryfall ID
   async getCardById(scryfallId) {
     await this.rateLimit()
-    
+
     try {
       const response = await this.axiosInstance.get(`/cards/${scryfallId}`)
       return { success: true, data: response.data }
@@ -96,7 +101,7 @@ class ScryfallService {
   // Get all sets
   async getAllSets() {
     await this.rateLimit()
-    
+
     try {
       const response = await this.axiosInstance.get('/sets')
       return { success: true, data: response.data.data }
@@ -108,7 +113,7 @@ class ScryfallService {
   // Get specific set
   async getSet(setCode) {
     await this.rateLimit()
-    
+
     try {
       const response = await this.axiosInstance.get(`/sets/${setCode}`)
       return { success: true, data: response.data }
@@ -120,7 +125,7 @@ class ScryfallService {
   // Get cards from a specific set
   async getCardsFromSet(setCode, page = 1) {
     await this.rateLimit()
-    
+
     try {
       const response = await this.axiosInstance.get(`/cards/search`, {
         params: {
@@ -146,7 +151,7 @@ class ScryfallService {
   // Get bulk data info
   async getBulkDataInfo() {
     await this.rateLimit()
-    
+
     try {
       const response = await this.axiosInstance.get('/bulk-data')
       return { success: true, data: response.data.data }
@@ -170,12 +175,12 @@ class ScryfallService {
     try {
       console.log(`Downloading bulk data from: ${targetBulk.download_uri}`)
       console.log(`File size: ${(targetBulk.size / 1024 / 1024).toFixed(2)} MB`)
-      
+
       const response = await axios.get(targetBulk.download_uri, {
         timeout: 300000, // 5 minute timeout for bulk download
         responseType: 'stream'
       })
-      
+
       return {
         success: true,
         stream: response.data,
@@ -189,20 +194,23 @@ class ScryfallService {
 
   // Transform Scryfall card data to your database format
   transformCardData(scryfallCard) {
+
+    let dual = scryfallCard.card_faces && scryfallCard.card_faces.length > 0 ? true : false
+
     return {
       scryfall_id: scryfallCard.id,
       name: scryfallCard.name,
-      set_number: scryfallCard.set,
+      set_number: scryfallCard.set.toUpperCase(),
       card_number: scryfallCard.collector_number,
-      mana_cost: scryfallCard.mana_cost || '',
+      mana_cost: dual ? scryfallCard.card_faces[0].mana_cost || '' : scryfallCard.mana_cost || '',
       cmc: scryfallCard.cmc || 0,
-      type_line: scryfallCard.type_line || '',
-      oracle_text: scryfallCard.oracle_text || '',
+      type_line: dual ? scryfallCard.card_faces[0].type_line || '' : scryfallCard.type_line || '',
+      oracle_text: dual ? scryfallCard.card_faces[0].oracle_text || '' : scryfallCard.oracle_text || '',
       power: scryfallCard.power || null,
       toughness: scryfallCard.toughness || null,
       loyalty: scryfallCard.loyalty || null,
       rarity: scryfallCard.rarity?.toLowerCase(),
-      treatment: this.getTreatment(scryfallCard),
+      treatment: null,
       image_url: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal || '',
       image_url_small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small || '',
       image_url_large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large || '',
@@ -249,25 +257,25 @@ class ScryfallService {
       // Market price (will be calculated from your platform's sales)
       market_price: null,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      frame_effects: scryfallCard.frame_effects,
+      promo_types: scryfallCard.promo_types
     }
   }
 
   // Determine card treatment/finish
   getTreatment(scryfallCard) {
     const treatments = []
-    
+
     if (scryfallCard.foil) treatments.push('foil')
-    if (scryfallCard.nonfoil) treatments.push('nonfoil')
     if (scryfallCard.etched) treatments.push('etched')
     if (scryfallCard.glossy) treatments.push('glossy')
-    
+
     // Check for special treatments in frame effects
     if (scryfallCard.frame_effects?.includes('showcase')) treatments.push('showcase')
     if (scryfallCard.frame_effects?.includes('extendedart')) treatments.push('extended-art')
     if (scryfallCard.frame_effects?.includes('borderless')) treatments.push('borderless')
-    if (scryfallCard.security_stamp === 'oval') treatments.push('retro')
-    
+
     return treatments.length > 0 ? treatments.join(', ') : ''
   }
 
@@ -276,7 +284,7 @@ class ScryfallService {
     if (error.response) {
       const status = error.response.status
       const message = error.response.data?.details || error.response.statusText
-      
+
       switch (status) {
         case 404:
           throw new Error('Card or resource not found')

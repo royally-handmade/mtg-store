@@ -7,6 +7,7 @@
       @blur="handleBlur"
       @keydown.escape="closeResults"
       @keydown.enter="handleEnterKey"
+      @keydown="handleKeyNavigation"
       type="text" 
       placeholder="Search cards..." 
       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -72,7 +73,7 @@
         <!-- View All Results -->
         <div v-if="searchResults.length >= 10" class="border-t border-gray-100">
           <router-link 
-            :to="`/cards?search=${encodeURIComponent(searchQuery)}`"
+            :to="`/search?q=${encodeURIComponent(searchQuery)}`"
             @click="closeResults"
             class="block w-full text-center py-3 text-blue-600 hover:bg-blue-50 text-sm font-medium"
           >
@@ -92,7 +93,6 @@ import {
   XCircleIcon, 
   ClockIcon 
 } from '@heroicons/vue/24/outline'
-import { LRUCache } from 'lru-cache'
 import api from '@/lib/api'
 
 const router = useRouter()
@@ -114,12 +114,6 @@ const selectedIndex = ref(-1)
 const recentSearches = ref([])
 
 let debounceTimer = null
-
-// LRU Cache for search results
-const searchCache = new LRUCache({
-  max: 100, // Maximum 100 cached searches
-  ttl: 1000 * 60 * 5, // 5 minutes TTL
-})
 
 // Load recent searches from localStorage
 onMounted(() => {
@@ -154,27 +148,39 @@ const handleSearch = async () => {
     selectedIndex.value = -1
 
     try {
-      // Check cache first
-      const cacheKey = `search:${query.toLowerCase()}`
-      let results = searchCache.get(cacheKey)
-      
-      if (!results) {
-        // Make API call if not in cache
-        const response = await api.get(`/cards/search?q=${encodeURIComponent(query)}&limit=10`)
-        results = response.data || []
-        
-        // Cache the results
-        searchCache.set(cacheKey, results)
+      // Try enhanced search suggestions first
+      let response
+      try {
+        response = await api.get('/search/suggestions', {
+          params: { q: query, limit: 10 }
+        })
+        // Convert to expected format if needed
+        if (response.data && Array.isArray(response.data) && response.data[0]?.type) {
+          searchResults.value = response.data.filter(item => item.type === 'card').map(item => ({
+            id: item.id || Math.random().toString(36),
+            name: item.display || item.value,
+            image_url: item.image,
+            set_number: item.set,
+            type_line: item.type_line || '',
+            rarity: item.rarity || '',
+            market_price: item.market_price || null
+          }))
+        } else {
+          searchResults.value = response.data
+        }
+      } catch (enhancedError) {
+        // Fallback to existing cards search
+        response = await api.get('/cards', {
+          params: { search: query, limit: 10 }
+        })
+        searchResults.value = response.data || []
       }
-      
-      searchResults.value = results
       
       // Add to recent searches if not already there
       if (query.length >= 2 && !recentSearches.value.includes(query)) {
         recentSearches.value.unshift(query)
-        recentSearches.value = recentSearches.value.slice(0, 5) // Keep only 5 recent searches
+        recentSearches.value = recentSearches.value.slice(0, 5)
         
-        // Save to localStorage
         try {
           localStorage.setItem('mtg-recent-searches', JSON.stringify(recentSearches.value))
         } catch (e) {
@@ -209,7 +215,7 @@ const handleEnterKey = () => {
     router.push(`/card/${card.id}`)
     closeResults()
   } else if (searchQuery.value.trim()) {
-    router.push(`/cards?search=${encodeURIComponent(searchQuery.value.trim())}`)
+    router.push(`/search?q=${encodeURIComponent(searchQuery.value.trim())}`)
     closeResults()
   }
 }
@@ -251,11 +257,6 @@ watch(searchQuery, (newValue) => {
     searchResults.value = []
     selectedIndex.value = -1
   }
-})
-
-// Add keyboard navigation
-onMounted(() => {
-  document.addEventListener('keydown', handleKeyNavigation)
 })
 </script>
 

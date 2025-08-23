@@ -55,6 +55,17 @@
                 placeholder="lea"
               >
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Collector Number (Optional)
+              </label>
+              <input
+                v-model="singleCard.card_num"
+                type="text"
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="lea"
+              >
+            </div>
           </div>
           
           <button
@@ -80,7 +91,7 @@
               </p>
               <div v-if="importResults.single.card" class="mt-2">
                 <div class="flex items-center space-x-3">
-                  <img :src="importResults.single.card.image_url_small" :alt="importResults.single.card.name" class="w-16 h-16 rounded-md">
+                  <img :src="importResults.single.card.image_url_small" :alt="importResults.single.card.name" class="w-16 rounded-md">
                   <div>
                     <p class="font-medium">{{ importResults.single.card.name }}</p>
                     <p class="text-sm text-gray-600">{{ importResults.single.card.set_name }} ({{ importResults.single.card.set_number?.toUpperCase() }})</p>
@@ -210,7 +221,7 @@
               <img
                 :src="card.image_url"
                 :alt="card.name"
-                class="w-16 h-16 rounded-md object-cover"
+                class="w-16 rounded-md object-cover"
               >
               <div class="flex-1 min-w-0">
                 <h3 class="font-medium text-gray-900 truncate">{{ card.name }}</h3>
@@ -334,7 +345,7 @@ export default {
     ]
 
     // Single card import
-    const singleCard = ref({ name: '', set_code: '' })
+    const singleCard = ref({ name: '', set_code: '', card_num: ''})
     const importing = ref({
       single: false,
       set: false,
@@ -369,7 +380,8 @@ export default {
       try {
         const response = await api.post('/scryfall/import-card', {
           name: singleCard.value.name,
-          set_code: singleCard.value.set_code || undefined
+          set_code: singleCard.value.set_code || undefined,
+          card_num: singleCard.value.card_num || undefined
         })
 
         importResults.value.single = {

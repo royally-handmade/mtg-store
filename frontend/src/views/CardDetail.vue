@@ -1,24 +1,42 @@
 <!-- Updated CardDetail.vue with Scryfall Integration -->
 <template>
-  <div v-if="card" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+  <div v-if="displayedCard" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <div>
-      <!-- Card Image with potential double-faced card support -->
+      <!-- Card Image with enhanced double-faced card support -->
       <div class="mb-6">
-        <img :src="card.image_url || card.image_url_large" :alt="card.name" 
-             class="w-full max-w-md mx-auto rounded-lg shadow-lg" />
-        
-        <!-- Double-faced card images if available -->
-        <div v-if="card.card_faces && card.card_faces.length > 1" class="mt-4">
-          <p class="text-sm font-medium text-gray-700 text-center mb-2">Double-faced card:</p>
+        <img :src="currentImageUrl" :alt="displayedCard.name" class="w-full max-w-md mx-auto rounded-lg shadow-lg" />
+
+        <!-- Enhanced Double-faced card interface -->
+        <div v-if="hasMultipleFaces" class="mt-4">
+          <p class="text-sm font-medium text-gray-700 text-center mb-3">Double-faced card:</p>
+
+          <!-- Face Selection Buttons -->
+          <div class="flex justify-center space-x-2 mb-3">
+            <button v-for="(face, index) in card.card_faces" :key="`btn-${index}`" @click="selectCardFace(index)"
+              :class="[
+                'px-3 py-2 rounded-lg font-medium transition-all text-sm',
+                selectedFaceIndex === index
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ]">
+              {{ getFaceName(index) }}
+            </button>
+          </div>
+
+          <!-- Face Preview Thumbnails -->
           <div class="grid grid-cols-2 gap-2 max-w-md mx-auto">
-            <img
-              v-for="(face, index) in card.card_faces"
-              :key="index"
-              :src="face.image_url"
-              :alt="face.name"
-              class="w-full rounded border cursor-pointer hover:shadow-md"
-              @click="selectCardFace(index)"
-            >
+            <div v-for="(face, index) in card.card_faces" :key="`thumb-${index}`" @click="selectCardFace(index)" :class="[
+              'cursor-pointer rounded-lg border-2 transition-all overflow-hidden',
+              selectedFaceIndex === index
+                ? 'border-blue-500 shadow-lg ring-2 ring-blue-200'
+                : 'border-gray-300 hover:border-gray-400 hover:shadow-md'
+            ]">
+              <img :src="face.image_url" :alt="face.name"
+                class="w-full rounded-md transition-transform hover:scale-105" />
+              <div class="p-2 bg-white">
+                <p class="text-xs font-medium text-center truncate">{{ face.name }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -26,9 +44,9 @@
       <!-- Enhanced Card Information -->
       <div class="space-y-4">
         <div class="flex items-center gap-3 flex-wrap">
-          <h1 class="text-3xl font-bold">{{ card.name }}</h1>
-          <TreatmentBadge :treatment="card.treatment" size="md" />
-          
+          <h1 class="text-3xl font-bold">{{ displayedCard.name }}</h1>
+          <TreatmentBadge :treatment="displayedCard.treatment" size="md" />
+
           <!-- Additional badges for special attributes -->
           <span v-if="card.foil" class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
             Foil Available
@@ -36,37 +54,48 @@
           <span v-if="card.promo" class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">
             Promo
           </span>
+          <span v-if="hasMultipleFaces" class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+            {{ card.layout || 'Double-Faced' }}
+          </span>
         </div>
 
         <!-- Enhanced Card Details Grid -->
         <div class="grid grid-cols-2 gap-4 text-sm">
-          <div><strong>Set:</strong> {{ card.set_name || card.set_number }}</div>
-          <div><strong>Rarity:</strong> <span class="capitalize">{{ card.rarity?.replace('_', ' ') }}</span></div>
-          <div><strong>Mana Cost:</strong> <ManaCostDisplay :mana-cost="card.mana_cost" size="large"/></div>
-          <div v-if="card.cmc !== undefined"><strong>CMC:</strong> {{ card.cmc }}</div>
-          <div><strong>Type:</strong> {{ card.type_line }}</div>
-          <div v-if="card.card_number"><strong>Card Number:</strong> {{ card.card_number }}</div>
-          <div v-if="card.power || card.toughness"><strong>P/T:</strong> {{ card.power }}/{{ card.toughness }}</div>
-          <div v-if="card.loyalty"><strong>Loyalty:</strong> {{ card.loyalty }}</div>
-          <div v-if="card.artist"><strong>Artist:</strong> {{ card.artist }}</div>
-          <div v-if="card.released_at"><strong>Released:</strong> {{ formatDate(card.released_at) }}</div>
+          <div><strong>Set:</strong> {{ displayedCard.set_name || displayedCard.set_number.toUpperCase() }} </div>
+          <div><strong>Mana Cost:</strong>
+            <ManaCostDisplay :mana-cost="displayedCard.mana_cost" size="large" />
+          </div>
+          <div v-if="displayedCard.card_number"><strong>Card Number:</strong> {{ displayedCard.card_number }}</div>
+
+          <div v-if="displayedCard.power !== null && displayedCard.toughness !== null"><strong>P/T:</strong> {{
+            displayedCard.power }}/{{ displayedCard.toughness }}</div>
+
+          <div><strong>Rarity:</strong> <span class="capitalize">{{ displayedCard.rarity?.replace('_', ' ') }}</span>
+          </div>
+          <div v-if="displayedCard.released_at"><strong>Released:</strong> {{ formatDate(displayedCard.released_at) }}
+          </div>
+          <div><strong>Type:</strong> {{ displayedCard.type_line }}</div>
+
+
+          <div v-if="displayedCard.loyalty !== null"><strong>Loyalty:</strong> {{ displayedCard.loyalty }}</div>
+          <div v-if="displayedCard.artist"><strong>Artist:</strong> {{ displayedCard.artist }}</div>
+
         </div>
 
         <!-- Oracle Text -->
-        <div v-if="card.oracle_text" class="bg-gray-50 p-4 rounded-lg">
+        <div v-if="displayedCard.oracle_text" class="bg-gray-50 p-4 rounded-lg">
           <h3 class="font-semibold mb-2">Oracle Text</h3>
-          <div class="text-sm italic whitespace-pre-line">{{ card.oracle_text }}</div>
+          <div class="text-sm italic leading-relaxed">
+            <ManaCostInText :text="displayedCard.oracle_text" size="small" :preserve-newlines="true" />
+          </div>
         </div>
 
         <!-- Keywords -->
-        <div v-if="card.keywords && card.keywords.length > 0" class="space-y-2">
+        <div v-if="displayedCard.keywords && displayedCard.keywords.length > 0" class="space-y-2">
           <h3 class="font-semibold">Keywords</h3>
           <div class="flex flex-wrap gap-1">
-            <span
-              v-for="keyword in card.keywords"
-              :key="keyword"
-              class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
-            >
+            <span v-for="keyword in displayedCard.keywords" :key="keyword"
+              class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
               {{ keyword }}
             </span>
           </div>
@@ -80,32 +109,32 @@
             <div class="flex justify-between items-center">
               <span class="text-sm font-medium text-gray-700">Our Platform</span>
               <span class="font-semibold text-green-600">
-                ${{ card.market_price?.toFixed(2) || 'N/A' }}
+                ${{ displayedCard.market_price?.toFixed(2) || 'N/A' }}
               </span>
             </div>
-            
+
             <!-- External Prices from Scryfall integration -->
-            <div v-if="card.prices?.usd" class="flex justify-between items-center">
+            <div v-if="displayedCard.prices?.usd" class="flex justify-between items-center">
               <span class="text-sm text-gray-600">Scryfall (USD)</span>
-              <span class="text-gray-800">${{ parseFloat(card.prices.usd).toFixed(2) }}</span>
+              <span class="text-gray-800">${{ parseFloat(displayedCard.prices.usd).toFixed(2) }}</span>
             </div>
-            
-            <div v-if="card.prices?.usd_foil" class="flex justify-between items-center">
+
+            <div v-if="displayedCard.prices?.usd_foil" class="flex justify-between items-center">
               <span class="text-sm text-gray-600">Scryfall Foil (USD)</span>
-              <span class="text-gray-800">${{ parseFloat(card.prices.usd_foil).toFixed(2) }}</span>
+              <span class="text-gray-800">${{ parseFloat(displayedCard.prices.usd_foil).toFixed(2) }}</span>
             </div>
-            
-            <div v-if="card.prices?.eur" class="flex justify-between items-center">
+
+            <div v-if="displayedCard.prices?.eur" class="flex justify-between items-center">
               <span class="text-sm text-gray-600">Cardmarket (EUR)</span>
-              <span class="text-gray-800">€{{ parseFloat(card.prices.eur).toFixed(2) }}</span>
+              <span class="text-gray-800">€{{ parseFloat(displayedCard.prices.eur).toFixed(2) }}</span>
             </div>
-            
+
             <!-- Additional external prices if available -->
             <div v-if="externalPrices.tcgplayer" class="flex justify-between items-center">
               <span class="text-sm text-gray-600">TCGPlayer</span>
               <span class="text-gray-800">${{ externalPrices.tcgplayer.toFixed(2) }}</span>
             </div>
-            
+
             <div v-if="externalPrices.cardkingdom" class="flex justify-between items-center">
               <span class="text-sm text-gray-600">Card Kingdom</span>
               <span class="text-gray-800">${{ externalPrices.cardkingdom.toFixed(2) }}</span>
@@ -118,7 +147,7 @@
         <div class="bg-blue-50 p-4 rounded">
           <h3 class="font-semibold mb-2">Price History (Our Platform)</h3>
           <PriceTrendChart :data="priceHistory" />
-          
+
           <!-- Market Statistics -->
           <div v-if="listings.length > 0" class="mt-4 pt-4 border-t border-blue-200">
             <h4 class="font-medium mb-2">Market Stats</h4>
@@ -149,14 +178,35 @@
       <div class="bg-white rounded-lg shadow p-6">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-xl font-bold">Current Listings</h2>
-          <button v-if="authStore.isSeller" @click="showAddListing = false"
-            class="bg-slate-300 text-white px-4 py-2 rounded ">
-            Add Listing
-          </button>
-          <button v-else="authStore.isApproved" @click="showAddListing = true"
-              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-            Add Listing
-          </button>
+
+          <!-- Create Listing Button for Sellers -->
+          <div class="flex items-center space-x-2">
+            <button v-if="authStore.isAuthenticated && (authStore.isSeller || authStore.isApproved)"
+              @click="handleCreateListing" :disabled="creatingListing"
+              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              <span>Create Listing</span>
+            </button>
+
+            <!-- Not a seller message -->
+            <div v-else-if="authStore.isAuthenticated && !authStore.isSeller && !authStore.isApproved"
+              class="text-sm text-gray-500 text-center">
+              <p class="mb-1">Want to sell cards?</p>
+              <router-link to="/seller" class="text-blue-600 hover:text-blue-800 underline">
+                Apply to become a seller
+              </router-link>
+            </div>
+
+            <!-- Not logged in message -->
+            <div v-else-if="!authStore.isAuthenticated" class="text-sm text-gray-500 text-center">
+              <p class="mb-1">Want to list this card?</p>
+              <router-link to="/auth" class="text-blue-600 hover:text-blue-800 underline">
+                Sign in to create listings
+              </router-link>
+            </div>
+          </div>
         </div>
 
         <!-- Listings Filter -->
@@ -169,7 +219,7 @@
             <option value="heavily_played">Heavily Played</option>
             <option value="damaged">Damaged</option>
           </select>
-          
+
           <select v-model="sortBy" class="text-sm border rounded px-2 py-1">
             <option value="price">Sort by Price</option>
             <option value="condition">Sort by Condition</option>
@@ -178,23 +228,27 @@
           </select>
         </div>
 
+        <!-- Error Message for Listing Creation -->
+        <div v-if="listingError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p class="text-red-600 text-sm">{{ listingError }}</p>
+        </div>
+
         <!-- Enhanced Listings Display -->
         <div class="space-y-3">
-          <div v-for="listing in filteredAndSortedListings" :key="listing.id" 
-               class="border rounded p-4 hover:bg-gray-50 transition-colors">
+          <div v-for="listing in filteredAndSortedListings" :key="listing.id"
+            class="border rounded p-4 hover:bg-gray-50 transition-colors">
             <div class="flex justify-between items-start">
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1">
                   <div class="font-medium text-lg">${{ listing.price }} CAD</div>
-                  <span class="px-2 py-1 text-xs rounded-full"
-                        :class="getConditionColor(listing.condition)">
+                  <span class="px-2 py-1 text-xs rounded-full" :class="getConditionColor(listing.condition)">
                     {{ listing.condition.replace('_', ' ').toUpperCase() }}
                   </span>
                   <span v-if="listing.treatment" class="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
                     {{ listing.treatment }}
                   </span>
                 </div>
-                
+
                 <div class="text-xs text-gray-600 mb-">
                   Sold by {{ listing.seller_name }}
                   <span class="text-yellow-500 ml-1">★ {{ listing.seller_rating || 'New' }}</span>
@@ -202,17 +256,16 @@
                 <div class="text-xs text-gray-600 mb-1">
                   Ships From Canada <!--Replace with seller country-->
                 </div>
-                
+
                 <div class="flex items-center gap-4 text-xs text-gray-500">
                   <span>Qty: {{ listing.quantity }}</span>
                   <span v-if="listing.created_at">Listed {{ timeAgo(listing.created_at) }}</span>
-                  <span v-if="listing.language && listing.language !== 'en'" 
-                        class="px-1 py-0.5 bg-gray-100 rounded">
+                  <span v-if="listing.language && listing.language !== 'en'" class="px-1 py-0.5 bg-gray-100 rounded">
                     {{ listing.language.toUpperCase() }}
                   </span>
                 </div>
               </div>
-              
+
               <div class="flex flex-col gap-2 ml-4">
                 <button @click="addToCart(listing)"
                   class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition-colors">
@@ -225,12 +278,12 @@
               </div>
             </div>
           </div>
-          
-          <div v-if="filteredAndSortedListings.length === 0 && listings.length > 0" 
-               class="text-center py-4 text-gray-500">
+
+          <div v-if="filteredAndSortedListings.length === 0 && listings.length > 0"
+            class="text-center py-4 text-gray-500">
             No listings match your filters
           </div>
-          
+
           <div v-if="listings.length === 0" class="text-center py-8 text-gray-500">
             <div class="text-lg mb-2">No listings available</div>
             <div class="text-sm">Be the first to list this card!</div>
@@ -240,174 +293,322 @@
 
       <!-- Wishlist Button -->
       <div class="mt-6">
-        <WishlistButton :card-id="card.id" />
+        <WishlistButton :card-id="displayedCard.id" />
       </div>
     </div>
 
     <!-- Add Listing Modal -->
-    <AddListingModal v-if="showAddListing" :card="card" @close="showAddListing = false" @added="fetchListings" />
+    <AddListingModal v-if="showAddListing" :card="displayedCard" @close="showAddListing = false"
+      @added="onListingCreated" @error="onListingError" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import api from '@/lib/api'
-import PriceTrendChart from '@/components/PriceTrendChart.vue'
-import PriceComparisonChart from '@/components/PriceComparisonChart.vue'
-import AddListingModal from '@/components/AddListingModal.vue'
-import WishlistButton from '@/components/WishlistButton.vue'
-import TreatmentBadge from '../components/TreatmentBadge.vue'
-import ManaCostDisplay from '../components/ManaCostDisplay.vue'
+  import { ref, onMounted, computed, watch } from 'vue'
+  import { useRoute } from 'vue-router'
+  import { useAuthStore } from '@/stores/auth'
+  import api from '@/lib/api'
+  import PriceTrendChart from '@/components/PriceTrendChart.vue'
+  import PriceComparisonChart from '@/components/PriceComparisonChart.vue'
+  import AddListingModal from '@/components/AddListingModal.vue'
+  import WishlistButton from '@/components/WishlistButton.vue'
+  import TreatmentBadge from '../components/TreatmentBadge.vue'
+  import ManaCostDisplay from '../components/ManaCostDisplay.vue'
+  import ManaCostInText from '../components/ManaCostInText.vue'
 
-const route = useRoute()
-const authStore = useAuthStore()
+  const route = useRoute()
+  const authStore = useAuthStore()
 
-const card = ref(null)
-const listings = ref([])
-const priceHistory = ref([])
-const externalPrices = ref({})
-const showAddListing = ref(false)
-const selectedCondition = ref('')
-const sortBy = ref('price')
+  // Original reactive data
+  const card = ref(null)
+  const listings = ref([])
+  const priceHistory = ref([])
+  const externalPrices = ref({})
+  const showAddListing = ref(false)
+  const selectedCondition = ref('')
+  const sortBy = ref('price')
 
-// Computed properties for enhanced functionality
-const filteredAndSortedListings = computed(() => {
-  let filtered = listings.value
+  // New reactive data for card face selection
+  const selectedFaceIndex = ref(0)
+  const displayedCard = ref(null)
+  const currentImageUrl = ref('')
 
-  // Filter by condition
-  if (selectedCondition.value) {
-    filtered = filtered.filter(listing => listing.condition === selectedCondition.value)
-  }
+  // Loading and error states for listing creation
+  const creatingListing = ref(false)
+  const listingError = ref('')
 
-  // Sort listings
-  return filtered.sort((a, b) => {
-    switch (sortBy.value) {
-      case 'price':
-        return a.price - b.price
-      case 'condition':
-        const conditionOrder = ['near_mint', 'lightly_played', 'moderately_played', 'heavily_played', 'damaged']
-        return conditionOrder.indexOf(a.condition) - conditionOrder.indexOf(b.condition)
-      case 'quantity':
-        return b.quantity - a.quantity
-      case 'seller_rating':
-        return (b.seller_rating || 0) - (a.seller_rating || 0)
-      default:
-        return 0
+  // Computed properties for enhanced functionality
+  const filteredAndSortedListings = computed(() => {
+    let filtered = listings.value
+
+    // Filter by condition
+    if (selectedCondition.value) {
+      filtered = filtered.filter(listing => listing.condition === selectedCondition.value)
     }
+
+    // Sort listings
+    return filtered.sort((a, b) => {
+      switch (sortBy.value) {
+        case 'price':
+          return a.price - b.price
+        case 'condition':
+          const conditionOrder = ['near_mint', 'lightly_played', 'moderately_played', 'heavily_played', 'damaged']
+          return conditionOrder.indexOf(a.condition) - conditionOrder.indexOf(b.condition)
+        case 'quantity':
+          return b.quantity - a.quantity
+        case 'seller_rating':
+          return (b.seller_rating || 0) - (a.seller_rating || 0)
+        default:
+          return 0
+      }
+    })
   })
-})
 
-const lowestPrice = computed(() => {
-  return listings.value.length > 0 ? Math.min(...listings.value.map(l => l.price)) : 0
-})
+  const lowestPrice = computed(() => {
+    return listings.value.length > 0 ? Math.min(...listings.value.map(l => l.price)) : 0
+  })
 
-const averagePrice = computed(() => {
-  if (listings.value.length === 0) return 0
-  return listings.value.reduce((sum, l) => sum + l.price, 0) / listings.value.length
-})
+  const averagePrice = computed(() => {
+    if (listings.value.length === 0) return 0
+    return listings.value.reduce((sum, l) => sum + l.price, 0) / listings.value.length
+  })
 
-const totalQuantity = computed(() => {
-  return listings.value.reduce((sum, l) => sum + l.quantity, 0)
-})
+  const totalQuantity = computed(() => {
+    return listings.value.reduce((sum, l) => sum + l.quantity, 0)
+  })
 
-const uniqueSellers = computed(() => {
-  return new Set(listings.value.map(l => l.seller_id)).size
-})
+  const uniqueSellers = computed(() => {
+    return new Set(listings.value.map(l => l.seller_id)).size
+  })
 
-// API calls
-const fetchCard = async () => {
-  try {
-    const response = await api.get(`/cards/${route.params.id}`)
-    card.value = response.data
-  } catch (error) {
-    console.error('Error fetching card:', error)
+  // New computed properties for card faces
+  const hasMultipleFaces = computed(() => {
+    return card.value && card.value.card_faces && card.value.card_faces.length > 1
+  })
+
+  // API calls
+  const fetchCard = async () => {
+    try {
+      const response = await api.get(`/cards/${route.params.id}`)
+      card.value = response.data
+    } catch (error) {
+      console.error('Error fetching card:', error)
+    }
   }
-}
 
-const fetchListings = async () => {
-  try {
-    const response = await api.get(`/cards/${route.params.id}/listings`)
-    listings.value = response.data
-  } catch (error) {
-    console.error('Error fetching listings:', error)
+  const fetchListings = async () => {
+    try {
+      const response = await api.get(`/cards/${route.params.id}/listings`)
+      listings.value = response.data
+    } catch (error) {
+      console.error('Error fetching listings:', error)
+    }
   }
-}
 
-const fetchPriceHistory = async () => {
-  try {
-    const response = await api.get(`/cards/${route.params.id}/price-history`)
-    priceHistory.value = response.data
-  } catch (error) {
-    console.error('Error fetching price history:', error)
+  const fetchPriceHistory = async () => {
+    try {
+      const response = await api.get(`/cards/${route.params.id}/price-history`)
+      priceHistory.value = response.data
+    } catch (error) {
+      console.error('Error fetching price history:', error)
+    }
   }
-}
 
-const fetchExternalPrices = async () => {
-  try {
-    const response = await api.get(`/cards/${route.params.id}/external-prices`)
-    externalPrices.value = response.data
-  } catch (error) {
-    console.error('Error fetching external prices:', error)
-    // If endpoint doesn't exist yet, populate with mock data from Scryfall prices
-    if (card.value?.prices) {
-      externalPrices.value = {
-        scryfall: card.value.prices.usd ? parseFloat(card.value.prices.usd) : null,
-        scryfall_foil: card.value.prices.usd_foil ? parseFloat(card.value.prices.usd_foil) : null,
-        cardmarket: card.value.prices.eur ? parseFloat(card.value.prices.eur) : null
+  const fetchExternalPrices = async () => {
+    try {
+      const response = await api.get(`/cards/${route.params.id}/external-prices`)
+      externalPrices.value = response.data
+    } catch (error) {
+      console.error('Error fetching external prices:', error)
+      // If endpoint doesn't exist yet, populate with mock data from Scryfall prices
+      if (card.value?.prices) {
+        externalPrices.value = {
+          scryfall: card.value.prices.usd ? parseFloat(card.value.prices.usd) : null,
+          scryfall_foil: card.value.prices.usd_foil ? parseFloat(card.value.prices.usd_foil) : null,
+          cardmarket: card.value.prices.eur ? parseFloat(card.value.prices.eur) : null
+        }
       }
     }
   }
-}
 
-// Helper functions
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString()
-}
+  // Enhanced selectCardFace method
+  const selectCardFace = (faceIndex) => {
+    // Validate input
+    if (!card.value || !card.value.card_faces || !Array.isArray(card.value.card_faces)) {
+      console.warn('No card faces available')
+      return
+    }
 
-const timeAgo = (dateString) => {
-  const now = new Date()
-  const date = new Date(dateString)
-  const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
-  
-  if (diffInHours < 1) return 'less than an hour ago'
-  if (diffInHours < 24) return `${diffInHours} hours ago`
-  if (diffInHours < 168) return `${Math.floor(diffInHours / 24)} days ago`
-  return `${Math.floor(diffInHours / 168)} weeks ago`
-}
+    // Validate face index
+    if (faceIndex < 0 || faceIndex >= card.value.card_faces.length) {
+      console.warn('Invalid face index:', faceIndex)
+      return
+    }
 
-const getConditionColor = (condition) => {
-  const colors = {
-    near_mint: 'bg-green-100 text-green-800',
-    nm: 'bg-green-100 text-green-800',
-    lightly_played: 'bg-blue-100 text-blue-800',
-    moderately_played: 'bg-yellow-100 text-yellow-800',
-    heavily_played: 'bg-orange-100 text-orange-800',
-    damaged: 'bg-red-100 text-red-800'
+    // Set the selected face index
+    selectedFaceIndex.value = faceIndex
+
+    // Get the selected face data
+    const selectedFace = card.value.card_faces[faceIndex]
+
+    // Update the displayed card data with the selected face information
+    displayedCard.value = {
+      // Keep original card properties that don't change
+      id: card.value.id,
+      scryfall_id: card.value.scryfall_id,
+      set_number: card.value.set_number,
+      card_number: card.value.card_number,
+      rarity: card.value.rarity,
+      treatment: card.value.treatment,
+      layout: card.value.layout,
+      prices: card.value.prices,
+      artist: card.value.artist,
+
+      // Override with face-specific data
+      name: selectedFace.name || card.value.name,
+      mana_cost: selectedFace.mana_cost || card.value.mana_cost || '',
+      type_line: selectedFace.type_line || card.value.type_line || '',
+      oracle_text: selectedFace.oracle_text || card.value.oracle_text || '',
+      image_url: selectedFace.image_url || card.value.image_url,
+      image_url_small: selectedFace.image_url || card.value.image_url_small,
+      image_url_large: selectedFace.image_url || card.value.image_url_large,
+
+      // Face-specific stats (may not exist for all card types)
+      power: selectedFace.power !== undefined ? selectedFace.power : card.value.power,
+      toughness: selectedFace.toughness !== undefined ? selectedFace.toughness : card.value.toughness,
+      loyalty: selectedFace.loyalty !== undefined ? selectedFace.loyalty : card.value.loyalty,
+
+      // Keep the original card_faces array for navigation
+      card_faces: card.value.card_faces,
+
+      // Preserve other original properties
+      market_price: card.value.market_price,
+      set_name: card.value.set_name,
+      cmc: selectedFace.cmc || card.value.cmc,
+      keywords: selectedFace.keywords || card.value.keywords,
+      border_color: card.value.border_color,
+      frame: card.value.frame,
+      released_at: card.value.released_at
+    }
+
+    // Update the current image source for display
+    currentImageUrl.value = selectedFace.image_url || card.value.image_url
+
+    // Optional: Update URL hash or query parameter to preserve face selection on page reload
+    if (window.history.replaceState) {
+      const url = new URL(window.location)
+      url.searchParams.set('face', faceIndex)
+      window.history.replaceState({}, '', url)
+    }
+
+    console.log('Selected card face:', faceIndex, selectedFace)
   }
-  return colors[condition] || 'bg-gray-100 text-gray-800'
-}
 
-const selectCardFace = (index) => {
-  // For double-faced cards, could implement face switching
-  console.log('Selected card face:', index)
-}
+  // Helper function to get face names
+  const getFaceName = (faceIndex) => {
+    if (!card.value?.card_faces?.[faceIndex]) return `Face ${faceIndex + 1}`
+    return card.value.card_faces[faceIndex].name || `Face ${faceIndex + 1}`
+  }
 
-const addToCart = (listing) => {
-  // Add to cart logic
-  console.log('Adding to cart:', listing)
-}
+  // Helper functions
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString()
+  }
 
-const addToWishlist = (listing) => {
-  // Add to wishlist with price watching
-  console.log('Adding to wishlist:', listing)
-}
+  const timeAgo = (dateString) => {
+    const now = new Date()
+    const date = new Date(dateString)
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
 
-onMounted(async () => {
-  await fetchCard()
-  await fetchListings()
-  await fetchPriceHistory()
-  await fetchExternalPrices()
-})
+    if (diffInHours < 1) return 'less than an hour ago'
+    if (diffInHours < 24) return `${diffInHours} hours ago`
+    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)} days ago`
+    return `${Math.floor(diffInHours / 168)} weeks ago`
+  }
+
+  const getConditionColor = (condition) => {
+    const colors = {
+      near_mint: 'bg-green-100 text-green-800',
+      nm: 'bg-green-100 text-green-800',
+      lightly_played: 'bg-blue-100 text-blue-800',
+      moderately_played: 'bg-yellow-100 text-yellow-800',
+      heavily_played: 'bg-orange-100 text-orange-800',
+      damaged: 'bg-red-100 text-red-800'
+    }
+    return colors[condition] || 'bg-gray-100 text-gray-800'
+  }
+
+  const addToCart = (listing) => {
+    // Add to cart logic
+    console.log('Adding to cart:', listing)
+  }
+
+  const addToWishlist = (listing) => {
+    // Add to wishlist with price watching
+    console.log('Adding to wishlist:', listing)
+  }
+
+  // Enhanced listing creation handler
+  const handleCreateListing = () => {
+    // Reset any previous errors
+    listingError.value = ''
+
+    // Check authentication and seller status
+    if (!authStore.isAuthenticated) {
+      listingError.value = 'Please sign in to create listings'
+      return
+    }
+
+    if (!authStore.isSeller && !authStore.isApproved) {
+      listingError.value = 'You must be an approved seller to create listings'
+      return
+    }
+
+    // Open the listing modal
+    showAddListing.value = true
+  }
+
+  // Handle successful listing creation
+  const onListingCreated = async (newListing) => {
+    showAddListing.value = false
+    listingError.value = ''
+
+    // Refresh the listings to show the new one
+    await fetchListings()
+
+    // Show success message (you can integrate with your toast/notification system)
+    console.log('Listing created successfully:', newListing)
+  }
+
+  // Handle listing creation errors
+  const onListingError = (error) => {
+    listingError.value = error.message || 'Failed to create listing'
+    console.error('Listing creation error:', error)
+  }
+
+  // Watch for changes to the main card data and initialize the displayed card
+  watch(card, (newCard) => {
+    if (newCard) {
+      // Check URL for face parameter
+      const faceParam = route.query.face
+      const initialFace = faceParam ? parseInt(faceParam) : 0
+
+      // Initialize with the specified face or the main card data
+      if (newCard.card_faces && newCard.card_faces.length > 0) {
+        const validFaceIndex = Math.max(0, Math.min(initialFace, newCard.card_faces.length - 1))
+        selectCardFace(validFaceIndex)
+      } else {
+        // For single-faced cards, just use the card data directly
+        displayedCard.value = { ...newCard }
+        currentImageUrl.value = newCard.image_url || newCard.image_url_large
+      }
+    }
+  }, { immediate: true })
+
+  onMounted(async () => {
+    await fetchCard()
+    await fetchListings()
+    await fetchPriceHistory()
+    await fetchExternalPrices()
+  })
 </script>

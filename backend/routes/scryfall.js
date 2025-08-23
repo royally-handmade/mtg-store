@@ -1,6 +1,6 @@
 // routes/scryfall.js
 import express from 'express'
-import { supabase } from '../server.js'
+import { supabase, superbaseAdmin } from '../server.js'
 import { authenticateAdmin } from '../middleware/auth.js'
 import scryfallService from '../services/scryfallService.js'
 import zlib from 'zlib'
@@ -10,16 +10,19 @@ const router = express.Router()
 // Import specific card by name and set
 router.post('/import-card', authenticateAdmin, async (req, res) => {
   try {
-    const { name, set_code } = req.body
+    const { name, set_code, card_num } = req.body
+
 
     if (!name) {
       return res.status(400).json({ error: 'Card name is required' })
     }
 
+    var cn = card_num ? ` cn:${card_num}` : null
+
     // Search for the card on Scryfall
-    const result = set_code 
+    const result = set_code
       ? await scryfallService.getCardByNameAndSet(name, set_code)
-      : await scryfallService.searchCards(`!"${name}"`, { unique: 'cards' })
+      : await scryfallService.searchCards(`!"${name}"${cn}`, { unique: 'cards' })
 
     if (!result.success || (result.data?.length === 0 && !result.data?.id)) {
       return res.status(404).json({ error: 'Card not found on Scryfall' })
@@ -27,6 +30,8 @@ router.post('/import-card', authenticateAdmin, async (req, res) => {
 
     const scryfallCard = result.data?.id ? result.data : result.data[0]
     const transformedCard = scryfallService.transformCardData(scryfallCard)
+
+    console.log(transformedCard)
 
     // Check if card already exists
     const { data: existingCard } = await supabase
@@ -37,7 +42,7 @@ router.post('/import-card', authenticateAdmin, async (req, res) => {
 
     if (existingCard) {
       // Update existing card
-      const { data: updatedCard, error } = await supabase
+      const { data: updatedCard, error } = await superbaseAdmin
         .from('cards')
         .update(transformedCard)
         .eq('id', existingCard.id)
@@ -53,7 +58,7 @@ router.post('/import-card', authenticateAdmin, async (req, res) => {
       })
     } else {
       // Insert new card
-      const { data: newCard, error } = await supabase
+      const { data: newCard, error } = await superbaseAdmin
         .from('cards')
         .insert(transformedCard)
         .select()
@@ -125,11 +130,11 @@ router.post('/import-set', authenticateAdmin, async (req, res) => {
 
         // Batch upsert cards
         if (batch.length > 0) {
-          const { data: upsertedCards, error } = await supabase
+          const { data: upsertedCards, error } = await superbaseAdmin
             .from('cards')
-            .upsert(batch, { 
+            .upsert(batch, {
               onConflict: 'scryfall_id',
-              ignoreDuplicates: false 
+              ignoreDuplicates: false
             })
             .select('id, name, scryfall_id')
 
@@ -139,7 +144,7 @@ router.post('/import-set', authenticateAdmin, async (req, res) => {
           } else {
             // Count new vs updated (simplified - in real implementation you'd track this better)
             importedCount += upsertedCards.length
-            
+
             res.write(JSON.stringify({
               type: 'progress',
               page: page,
@@ -203,7 +208,7 @@ router.get('/search', authenticateAdmin, async (req, res) => {
     }
 
     const result = await scryfallService.searchCards(query, { page, unique })
-    
+
     if (!result.success) {
       return res.status(404).json({ error: 'No cards found' })
     }
@@ -250,13 +255,13 @@ router.get('/search', authenticateAdmin, async (req, res) => {
 router.get('/sets', authenticateAdmin, async (req, res) => {
   try {
     const result = await scryfallService.getAllSets()
-    
+
     if (!result.success) {
       return res.status(500).json({ error: 'Failed to fetch sets from Scryfall' })
     }
 
     // Filter to only Magic sets and add import status
-    const magicSets = result.data.filter(set => 
+    const magicSets = result.data.filter(set =>
       ['core', 'expansion', 'masters', 'draft_innovation', 'commander'].includes(set.set_type)
     )
 
@@ -339,7 +344,7 @@ router.post('/bulk-import', authenticateAdmin, async (req, res) => {
 
         try {
           const scryfallCard = JSON.parse(line)
-          
+
           // Filter out digital-only cards, tokens, etc. if desired
           if (scryfallCard.digital || scryfallCard.layout === 'token') {
             continue
@@ -352,11 +357,11 @@ router.post('/bulk-import', authenticateAdmin, async (req, res) => {
           // Process batch when it reaches batch_size
           if (batch.length >= batch_size) {
             try {
-              const { data, error } = await supabase
+              const { data, error } = await superbaseAdmin
                 .from('cards')
-                .upsert(batch, { 
+                .upsert(batch, {
                   onConflict: 'scryfall_id',
-                  ignoreDuplicates: false 
+                  ignoreDuplicates: false
                 })
 
               if (error) {
@@ -393,11 +398,11 @@ router.post('/bulk-import', authenticateAdmin, async (req, res) => {
       // Process remaining batch
       if (batch.length > 0) {
         try {
-          const { data, error } = await supabase
+          const { data, error } = await superbaseAdmin
             .from('cards')
-            .upsert(batch, { 
+            .upsert(batch, {
               onConflict: 'scryfall_id',
-              ignoreDuplicates: false 
+              ignoreDuplicates: false
             })
 
           if (error) {
@@ -461,7 +466,7 @@ router.post('/update-prices', authenticateAdmin, async (req, res) => {
     for (const cardId of card_ids) {
       try {
         // Get local card
-        const { data: localCard } = await supabase
+        const { data: localCard } = await superbaseAdmin
           .from('cards')
           .select('scryfall_id, name')
           .eq('id', cardId)
@@ -482,7 +487,7 @@ router.post('/update-prices', authenticateAdmin, async (req, res) => {
         const updatedData = scryfallService.transformCardData(result.data)
 
         // Update only price-related fields
-        const { error } = await supabase
+        const { error } = await superbaseAdmin
           .from('cards')
           .update({
             prices: updatedData.prices,

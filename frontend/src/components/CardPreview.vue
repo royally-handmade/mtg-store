@@ -19,7 +19,7 @@
     <div class="p-4">
     <TreatmentBadge :treatment="card.treatment" size="sm" />
       <h3 class="font-semibold text-lg mb-1 truncate">{{ card.name }}</h3>
-      <p class="text-sm text-gray-600 mb-2">{{ card.set_number }} • {{ card.rarity }}</p>
+      <p class="text-sm text-gray-600 mb-2">{{ card.set_number.toUpperCase() }} • {{ card.rarity.toUpperCase() }}</p>
       <div class="flex justify-between items-center">
         <span class="text-lg font-bold text-green-600">
           ${{ card.market_price || '0.00' }} CAD

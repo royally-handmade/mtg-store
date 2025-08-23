@@ -17,9 +17,11 @@ import cartRoutes from './routes/cart.js'
 import shippingRoutes from './routes/shipping.js'
 import paymentRoutes from './routes/payment.js'
 import wishlistRoutes from './routes/wishlist.js'  // Add this import
+import scryfallRoutes from './routes/scryfall.js'
 import usersRoutes from './routes/users.js'
 import './services/priceMonitoringService.js'
 import { WishlistAnalyticsService } from './services/wishlistAnalyticsService.js'
+import searchRoutes from './routes/search.js'
 
 // Import middleware
 import { authenticateUser } from './middleware/auth.js'
@@ -37,6 +39,11 @@ const PORT = process.env.PORT || 3000
 export const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
+)
+
+export const superbaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SECRET_KEY
 )
 
 // Middleware
@@ -60,6 +67,9 @@ app.use('/api/shipping', shippingRoutes)
 app.use('/api/payment', paymentRoutes)
 app.use('/api/wishlist', wishlistRoutes)  // Add this route
 app.use('/api/users', usersRoutes)
+app.use('/api/scryfall', authenticateUser, scryfallRoutes)
+app.use('/api/search', searchRoutes)
+
 
 // Health check
 app.get('/api/health', (req, res) => {
