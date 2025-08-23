@@ -1,10 +1,11 @@
+// Enhanced backend/routes/cart.js with better seller and shipping info
 import express from 'express'
 import { supabase } from '../server.js'
 import { authenticateUser } from '../middleware/auth.js'
 
 const router = express.Router()
 
-// Get cart items
+// Get cart items with enhanced seller and shipping information
 router.get('/', authenticateUser, async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -13,23 +14,127 @@ router.get('/', authenticateUser, async (req, res) => {
         *,
         listings (
           *,
-          cards (name, image_url, set_number),
-          profiles:seller_id (display_name, rating)
+          cards (id, name, image_url, set_number),
+          profiles:seller_id (
+            id,
+            display_name, 
+            rating,
+            shipping_address,
+            seller_tier,
+            response_time,
+            created_at
+          )
         )
       `)
       .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
     
     if (error) throw error
-    res.json(data)
+    
+    // Filter out any items with inactive listings
+    const activeItems = data.filter(item => 
+      item.listings && 
+      item.listings.status === 'active' && 
+      item.listings.quantity > 0
+    )
+    
+    res.json(activeItems)
   } catch (error) {
     res.status(500).json({ error: error.message })
   }
 })
 
-// Add item to cart
+// Get cart summary with detailed breakdown
+router.get('/summary', authenticateUser, async (req, res) => {
+  try {
+    const { data: items, error } = await supabase
+      .from('cart_items')
+      .select(`
+        *,
+        listings (
+          price,
+          seller_id,
+          profiles:seller_id (
+            shipping_address
+          )
+        )
+      `)
+      .eq('user_id', req.user.id)
+    
+    if (error) throw error
+    
+    // Calculate totals
+    let subtotal = 0
+    let itemCount = 0
+    const uniqueSellers = new Set()
+    
+    items.forEach(item => {
+      if (item.listings && item.listings.price) {
+        subtotal += parseFloat(item.listings.price) * item.quantity
+        itemCount += item.quantity
+        uniqueSellers.add(item.listings.seller_id)
+      }
+    })
+    
+    // Calculate tax (13% HST for Canada)
+    const tax = subtotal * 0.13
+    
+    // Estimate shipping (simplified - in production you'd calculate per seller/location)
+    let estimatedShipping = 0
+    if (uniqueSellers.size > 0) {
+      estimatedShipping = uniqueSellers.size * 5.99 // $5.99 per seller
+    }
+    
+    const total = subtotal + tax + estimatedShipping
+    
+    res.json({
+      itemCount,
+      subtotal: subtotal.toFixed(2),
+      estimatedShipping: estimatedShipping.toFixed(2),
+      tax: tax.toFixed(2),
+      total: total.toFixed(2),
+      uniqueSellers: uniqueSellers.size
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Add item to cart with validation
 router.post('/add', authenticateUser, async (req, res) => {
   try {
     const { listing_id, quantity = 1 } = req.body
+    
+    // Validate listing exists and is available
+    const { data: listing, error: listingError } = await supabase
+      .from('listings')
+      .select(`
+        *,
+        profiles:seller_id (
+          id,
+          display_name,
+          rating
+        )
+      `)
+      .eq('id', listing_id)
+      .eq('status', 'active')
+      .single()
+    
+    if (listingError || !listing) {
+      return res.status(404).json({ error: 'Listing not found or no longer available' })
+    }
+    
+    // Prevent users from adding their own listings
+    if (listing.seller_id === req.user.id) {
+      return res.status(400).json({ error: 'Cannot add your own listing to cart' })
+    }
+    
+    // Check quantity availability
+    if (listing.quantity < quantity) {
+      return res.status(400).json({ 
+        error: `Only ${listing.quantity} items available` 
+      })
+    }
     
     // Check if item already in cart
     const { data: existing } = await supabase
@@ -40,12 +145,35 @@ router.post('/add', authenticateUser, async (req, res) => {
       .single()
     
     if (existing) {
+      // Check if adding quantity would exceed available stock
+      const newQuantity = existing.quantity + quantity
+      if (newQuantity > listing.quantity) {
+        return res.status(400).json({ 
+          error: `Cannot add ${quantity} more. Only ${listing.quantity - existing.quantity} additional items available` 
+        })
+      }
+      
       // Update quantity
       const { data, error } = await supabase
         .from('cart_items')
-        .update({ quantity: existing.quantity + quantity })
+        .update({ 
+          quantity: newQuantity,
+          updated_at: new Date()
+        })
         .eq('id', existing.id)
-        .select()
+        .select(`
+          *,
+          listings (
+            *,
+            cards (id, name, image_url, set_number),
+            profiles:seller_id (
+              id,
+              display_name, 
+              rating,
+              shipping_address
+            )
+          )
+        `)
       
       if (error) throw error
       res.json(data[0])
@@ -56,45 +184,57 @@ router.post('/add', authenticateUser, async (req, res) => {
         .insert({
           user_id: req.user.id,
           listing_id,
-          quantity
+          quantity,
+          created_at: new Date(),
+          updated_at: new Date()
         })
-        .select()
+        .select(`
+          *,
+          listings (
+            *,
+            cards (id, name, image_url, set_number),
+            profiles:seller_id (
+              id,
+              display_name, 
+              rating,
+              shipping_address
+            )
+          )
+        `)
       
       if (error) throw error
       res.json(data[0])
     }
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    console.error('Error adding to cart:', error)
+    res.status(500).json({ error: 'Failed to add item to cart' })
   }
 })
 
-// Add multiple items to cart
-router.post('/add-multiple', authenticateUser, async (req, res) => {
-  try {
-    const { items } = req.body
-    
-    const cartItems = items.map(item => ({
-      user_id: req.user.id,
-      listing_id: item.listing_id,
-      quantity: item.quantity
-    }))
-    
-    const { data, error } = await supabase
-      .from('cart_items')
-      .insert(cartItems)
-      .select()
-    
-    if (error) throw error
-    res.json(data)
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-// Update cart item quantity
+// Update cart item quantity with validation
 router.put('/:id', authenticateUser, async (req, res) => {
   try {
     const { quantity } = req.body
+    
+    // Get cart item with listing info
+    const { data: cartItem } = await supabase
+      .from('cart_items')
+      .select(`
+        *,
+        listings (quantity, status, seller_id)
+      `)
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
+      .single()
+    
+    if (!cartItem) {
+      return res.status(404).json({ error: 'Cart item not found' })
+    }
+    
+    // Check if listing is still active
+    if (cartItem.listings.status !== 'active') {
+      return res.status(400).json({ error: 'This listing is no longer available' })
+    }
     
     if (quantity <= 0) {
       // Remove item if quantity is 0 or negative
@@ -107,18 +247,41 @@ router.put('/:id', authenticateUser, async (req, res) => {
       if (error) throw error
       res.json({ message: 'Item removed from cart' })
     } else {
+      // Check quantity availability
+      if (quantity > cartItem.listings.quantity) {
+        return res.status(400).json({ 
+          error: `Only ${cartItem.listings.quantity} items available` 
+        })
+      }
+      
       const { data, error } = await supabase
         .from('cart_items')
-        .update({ quantity })
+        .update({ 
+          quantity,
+          updated_at: new Date()
+        })
         .eq('id', req.params.id)
         .eq('user_id', req.user.id)
-        .select()
+        .select(`
+          *,
+          listings (
+            *,
+            cards (id, name, image_url, set_number),
+            profiles:seller_id (
+              id,
+              display_name, 
+              rating,
+              shipping_address
+            )
+          )
+        `)
       
       if (error) throw error
       res.json(data[0])
     }
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    console.error('Error updating cart item:', error)
+    res.status(500).json({ error: 'Failed to update cart item' })
   }
 })
 
@@ -134,7 +297,8 @@ router.delete('/:id', authenticateUser, async (req, res) => {
     if (error) throw error
     res.json({ message: 'Item removed from cart' })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    console.error('Error removing cart item:', error)
+    res.status(500).json({ error: 'Failed to remove item from cart' })
   }
 })
 
@@ -147,44 +311,61 @@ router.delete('/', authenticateUser, async (req, res) => {
       .eq('user_id', req.user.id)
     
     if (error) throw error
-    res.json({ message: 'Cart cleared' })
+    res.json({ message: 'Cart cleared successfully' })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    console.error('Error clearing cart:', error)
+    res.status(500).json({ error: 'Failed to clear cart' })
   }
 })
 
-// Get cart summary
-router.get('/summary', authenticateUser, async (req, res) => {
+// Validate cart items (check availability before checkout)
+router.post('/validate', authenticateUser, async (req, res) => {
   try {
     const { data: items, error } = await supabase
       .from('cart_items')
       .select(`
         *,
-        listings (price, seller_id)
+        listings (
+          *,
+          cards (name),
+          profiles:seller_id (display_name)
+        )
       `)
       .eq('user_id', req.user.id)
     
     if (error) throw error
     
-    const subtotal = items.reduce((sum, item) => {
-      return sum + (item.listings.price * item.quantity)
-    }, 0)
+    const issues = []
+    const validItems = []
     
-    const uniqueSellers = new Set(items.map(item => item.listings.seller_id)).size
-    const estimatedShipping = uniqueSellers * 5.00 // $5 per seller
-    const tax = subtotal * 0.13 // 13% HST
-    const total = subtotal + estimatedShipping + tax
+    for (const item of items) {
+      const listing = item.listings
+      
+      if (!listing || listing.status !== 'active') {
+        issues.push({
+          itemId: item.id,
+          cardName: listing?.cards?.name || 'Unknown Card',
+          issue: 'Listing no longer available'
+        })
+      } else if (listing.quantity < item.quantity) {
+        issues.push({
+          itemId: item.id,
+          cardName: listing.cards.name,
+          issue: `Only ${listing.quantity} available (you have ${item.quantity} in cart)`
+        })
+      } else {
+        validItems.push(item)
+      }
+    }
     
     res.json({
-      itemCount: items.length,
-      subtotal: subtotal.toFixed(2),
-      estimatedShipping: estimatedShipping.toFixed(2),
-      tax: tax.toFixed(2),
-      total: total.toFixed(2),
-      uniqueSellers
+      valid: issues.length === 0,
+      validItems,
+      issues
     })
   } catch (error) {
-    res.status(500).json({ error: error.message })
+    console.error('Error validating cart:', error)
+    res.status(500).json({ error: 'Failed to validate cart' })
   }
 })
 

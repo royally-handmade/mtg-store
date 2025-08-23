@@ -234,72 +234,112 @@
         </div>
 
         <!-- Enhanced Listings Display -->
-        <div class="space-y-3">
-          <div v-for="listing in filteredAndSortedListings" :key="listing.id"
-            class="border rounded p-4 hover:bg-gray-50 transition-colors">
-            <div class="flex justify-between items-start">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                  <div class="font-medium text-lg">${{ listing.price }} CAD</div>
-                  <span class="px-2 py-1 text-xs rounded-full" :class="getConditionColor(listing.condition)">
+        <div v-for="listing in filteredAndSortedListings" :key="listing.id"
+          class="bg-gray-50 rounded p-4 hover:bg-gray-100 transition-colors">
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-lg font-semibold text-green-600">
+                  ${{ listing.price }} CAD
+                </div>
+                <div class="flex items-center text-sm text-gray-600">
+                  <span class="px-2 py-1 rounded text-xs font-medium" :class="getConditionColor(listing.condition)">
                     {{ listing.condition.replace('_', ' ').toUpperCase() }}
                   </span>
-                  <span v-if="listing.treatment" class="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
-                    {{ listing.treatment }}
+                  <span v-if="listing.foil"
+                    class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
+                    FOIL
                   </span>
-                </div>
-
-                <div class="text-xs text-gray-600 mb-">
-                  Sold by {{ listing.seller_name }}
-                  <span class="text-yellow-500 ml-1">★ {{ listing.seller_rating || 'New' }}</span>
-                </div>
-                <div class="text-xs text-gray-600 mb-1">
-                  Ships From Canada <!--Replace with seller country-->
-                </div>
-
-                <div class="flex items-center gap-4 text-xs text-gray-500">
-                  <span>Qty: {{ listing.quantity }}</span>
-                  <span v-if="listing.created_at">Listed {{ timeAgo(listing.created_at) }}</span>
-                  <span v-if="listing.language && listing.language !== 'en'" class="px-1 py-0.5 bg-gray-100 rounded">
-                    {{ listing.language.toUpperCase() }}
+                  <span v-if="listing.signed"
+                    class="ml-2 px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                    SIGNED
                   </span>
                 </div>
               </div>
 
-              <div class="flex flex-col gap-2 ml-4">
-                <button @click="addToCart(listing)"
-                  class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition-colors">
-                  Add to Cart
-                </button>
-                <button @click="addToWishlist(listing)"
-                  class="border border-gray-300 text-gray-700 px-4 py-1 rounded text-xs hover:bg-gray-50">
-                  Watch Price
-                </button>
+              <div class="flex items-center text-sm text-gray-600 mb-1">
+                <router-link :to="`/seller/${listing.seller_id}`" class="font-medium text-blue-600 hover:text-blue-800">
+                  {{ listing.profiles?.display_name || 'Unknown Seller' }}
+                </router-link>
+                <span class="text-yellow-500 ml-1">
+                  ★ {{ listing.profiles?.rating || 'New' }}
+                </span>
+                <span class="ml-2 text-gray-400">•</span>
+                <span class="ml-2">
+                  Ships from {{ listing.profiles?.shipping_address?.country || 'Canada' }}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-4 text-xs text-gray-500">
+                <span>Qty: {{ listing.quantity }}</span>
+                <span v-if="listing.created_at">Listed {{ timeAgo(listing.created_at) }}</span>
+                <span v-if="listing.language && listing.language !== 'en'" class="px-1 py-0.5 bg-gray-100 rounded">
+                  {{ listing.language.toUpperCase() }}
+                </span>
               </div>
             </div>
-          </div>
 
-          <div v-if="filteredAndSortedListings.length === 0 && listings.length > 0"
-            class="text-center py-4 text-gray-500">
-            No listings match your filters
-          </div>
+            <div class="flex flex-col gap-2 ml-4">
+              <button @click="addToCart(listing)" :disabled="isAddToCartDisabled(listing)"
+                :class="getAddToCartButtonClass(listing)">
+                <span class="flex items-center gap-1">
+                  <svg v-if="addingToCart" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
+                  </svg>
+                  <svg v-else-if="wasRecentlyAdded(listing.id)" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd" />
+                  </svg>
+                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13h10m-10 0l-1.5 6m1.5-6h10m0 0l1.5 6" />
+                  </svg>
+                  {{ getAddToCartButtonText(listing) }}
+                </span>
+              </button>
 
-          <div v-if="listings.length === 0" class="text-center py-8 text-gray-500">
-            <div class="text-lg mb-2">No listings available</div>
-            <div class="text-sm">Be the first to list this card!</div>
+              <button @click="addToWishlist(listing)"
+                class="border border-gray-300 text-gray-700 px-4 py-1 rounded text-xs hover:bg-gray-50 transition-colors">
+                Watch Price
+              </button>
+            </div>
           </div>
+        </div>
+
+        <!-- Show message for seller's own listings -->
+        <div v-if="filteredAndSortedListings.length === 0 && listings.some(l => l.seller_id === authStore.user?.id)"
+          class="text-center py-4 text-gray-500">
+          <div class="text-lg mb-2">This is your listing</div>
+          <div class="text-sm">You cannot purchase your own cards</div>
+        </div>
+
+        <!-- Show message when no listings match filters -->
+        <div v-else-if="filteredAndSortedListings.length === 0 && listings.length > 0"
+          class="text-center py-4 text-gray-500">
+          No listings match your filters
+        </div>
+
+        <!-- Show message when no listings exist -->
+        <div v-else-if="listings.length === 0" class="text-center py-8 text-gray-500">
+          <div class="text-lg mb-2">No listings available</div>
+          <div class="text-sm">Be the first to list this card!</div>
+        </div>
+
+        <!-- Wishlist Button -->
+        <div class="mt-6">
+          <WishlistButton :card-id="displayedCard.id" />
         </div>
       </div>
 
-      <!-- Wishlist Button -->
-      <div class="mt-6">
-        <WishlistButton :card-id="displayedCard.id" />
-      </div>
+      <!-- Add Listing Modal -->
+      <AddListingModal v-if="showAddListing" :card="displayedCard" @close="showAddListing = false"
+        @added="onListingCreated" @error="onListingError" />
     </div>
-
-    <!-- Add Listing Modal -->
-    <AddListingModal v-if="showAddListing" :card="displayedCard" @close="showAddListing = false"
-      @added="onListingCreated" @error="onListingError" />
   </div>
 </template>
 
@@ -307,6 +347,8 @@
   import { ref, onMounted, computed, watch } from 'vue'
   import { useRoute } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
+  import { useCartStore } from '@/stores/cart'
+  import { useToast } from 'vue-toastification'
   import api from '@/lib/api'
   import PriceTrendChart from '@/components/PriceTrendChart.vue'
   import PriceComparisonChart from '@/components/PriceComparisonChart.vue'
@@ -538,9 +580,103 @@
     return colors[condition] || 'bg-gray-100 text-gray-800'
   }
 
-  const addToCart = (listing) => {
-    // Add to cart logic
-    console.log('Adding to cart:', listing)
+  
+  const cartStore = useCartStore()
+  const toast = useToast()
+  const addingToCart = ref(false)
+  const addedToCart = ref(new Set()) // Track which listings were added
+
+  // Replace the existing placeholder addToCart function with this implementation
+  const addToCart = async (listing) => {
+    // Check if user is authenticated
+    if (!authStore.isAuthenticated) {
+      toast.error('Please sign in to add items to cart')
+      router.push({ name: 'Auth', query: { redirect: route.fullPath } })
+      return
+    }
+
+    // Prevent adding seller's own listings
+    if (listing.seller_id === authStore.user?.id) {
+      toast.error('You cannot purchase your own listings')
+      return
+    }
+
+    // Check listing availability
+    if (listing.quantity <= 0 || listing.status !== 'active') {
+      toast.error('This listing is no longer available')
+      return
+    }
+
+    addingToCart.value = true
+
+    try {
+      await cartStore.addItem(listing.id, 1)
+      addedToCart.value.add(listing.id)
+
+      toast.success(`Added ${listing.cards?.name || 'card'} to cart`, {
+        timeout: 3000,
+        icon: '🛒'
+      })
+
+      // Auto-remove the "added" state after 3 seconds
+      setTimeout(() => {
+        addedToCart.value.delete(listing.id)
+      }, 3000)
+
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+
+      if (error.response?.status === 409) {
+        toast.warning('This item is already in your cart')
+      } else if (error.response?.status === 400) {
+        toast.error(error.response.data.error || 'Unable to add item to cart')
+      } else {
+        toast.error('Failed to add item to cart. Please try again.')
+      }
+    } finally {
+      addingToCart.value = false
+    }
+  }
+
+  // Helper function to check if a listing was recently added
+  const wasRecentlyAdded = (listingId) => {
+    return addedToCart.value.has(listingId)
+  }
+
+  // Update the button text and styling based on cart state
+  const getAddToCartButtonText = (listing) => {
+    if (addingToCart.value) return 'Adding...'
+    if (wasRecentlyAdded(listing.id)) return 'Added!'
+    return 'Add to Cart'
+  }
+
+  const getAddToCartButtonClass = (listing) => {
+    const baseClasses = 'px-4 py-2 rounded text-sm transition-colors font-medium'
+
+    if (addingToCart.value) {
+      return `${baseClasses} bg-gray-400 text-white cursor-not-allowed`
+    }
+
+    if (wasRecentlyAdded(listing.id)) {
+      return `${baseClasses} bg-green-600 text-white`
+    }
+
+    if (listing.seller_id === authStore.user?.id) {
+      return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
+    }
+
+    if (listing.quantity <= 0 || listing.status !== 'active') {
+      return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
+    }
+
+    return `${baseClasses} bg-green-600 text-white hover:bg-green-700`
+  }
+
+  // Function to check if button should be disabled
+  const isAddToCartDisabled = (listing) => {
+    return addingToCart.value ||
+      listing.seller_id === authStore.user?.id ||
+      listing.quantity <= 0 || listing.status !== 'active'
   }
 
   const addToWishlist = (listing) => {

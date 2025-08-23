@@ -50,6 +50,8 @@ export const useAuthStore = defineStore('auth', {
           options: { data: userData }
         })
         if (error) throw error
+
+
         return data
       } catch (error) {
         throw error

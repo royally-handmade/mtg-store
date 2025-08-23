@@ -1,5 +1,5 @@
 import express from 'express'
-import { supabase } from '../server.js'
+import { supabase, superbaseAdmin } from '../server.js'
 import { authenticateUser } from '../middleware/auth.js'
 import { 
   sendPasswordResetEmail, 
@@ -20,16 +20,16 @@ const router = express.Router()
 // Create user profile after signup
 router.post('/create-profile', async (req, res) => {
   try {
-    const { user_id, email, display_name, role = 'buyer' } = req.body
+    const { user_id, email, display_name, role } = req.body
     
-    const { data, error } = await supabase
+    const { data, error } = await superbaseAdmin
       .from('profiles')
       .insert({
         id: user_id,
         email,
         display_name,
         role,
-        approved: role === 'buyer' ? true : false
+        approved: false
       })
       .select()
     

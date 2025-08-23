@@ -51,7 +51,7 @@
           <td class="px-6 py-4 whitespace-nowrap">
             <span :class="getStatusColor(listing.status)" 
               class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-              {{ listing.status }}
+              {{ listing.status.toUpperCase() }}
             </span>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">

@@ -178,7 +178,7 @@ const requireApprovedSeller = async (req, res, next) => {
       .eq('id', req.user.id)
       .single()
 
-    if (profile?.role !== 'seller' || !profile?.approved) {
+    if (profile?.role == 'buyer' || !profile?.approved) {
       return res.status(403).json({ 
         error: 'Seller approval required',
         status: profile?.seller_application_status || 'not_applied'

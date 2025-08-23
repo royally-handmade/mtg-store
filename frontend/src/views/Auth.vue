@@ -11,20 +11,17 @@
     <form v-if="!showResetPassword" @submit.prevent="handleSubmit" class="space-y-6">
       <div v-if="isSignUp">
         <label class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
-        <input v-model="form.displayName" type="text" required 
-          class="input-field" placeholder="Your display name" />
+        <input v-model="form.displayName" type="text" required class="input-field" placeholder="Your display name" />
       </div>
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-        <input v-model="form.email" type="email" required 
-          class="input-field" placeholder="your@email.com" />
+        <input v-model="form.email" type="email" required class="input-field" placeholder="your@email.com" />
       </div>
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-        <input v-model="form.password" type="password" required 
-          class="input-field" placeholder="••••••••" />
+        <input v-model="form.password" type="password" required class="input-field" placeholder="••••••••" />
       </div>
 
       <div v-if="isSignUp">
@@ -38,8 +35,7 @@
         </p>
       </div>
 
-      <button type="submit" :disabled="loading" 
-        class="w-full btn-primary disabled:opacity-50">
+      <button type="submit" :disabled="loading" class="w-full btn-primary disabled:opacity-50">
         {{ loading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In') }}
       </button>
     </form>
@@ -48,15 +44,13 @@
     <form v-if="showResetPassword" @submit.prevent="handleResetPassword" class="space-y-6">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-        <input v-model="resetEmail" type="email" required 
-          class="input-field" placeholder="Enter your email address" />
+        <input v-model="resetEmail" type="email" required class="input-field" placeholder="Enter your email address" />
         <p class="text-sm text-gray-500 mt-1">
           We'll send you a link to reset your password.
         </p>
       </div>
 
-      <button type="submit" :disabled="resetLoading" 
-        class="w-full btn-primary disabled:opacity-50">
+      <button type="submit" :disabled="resetLoading" class="w-full btn-primary disabled:opacity-50">
         {{ resetLoading ? 'Sending...' : 'Send Reset Link' }}
       </button>
     </form>
@@ -68,10 +62,9 @@
           {{ isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up" }}
         </button>
       </div>
-      
+
       <div>
-        <button @click="toggleResetPassword" 
-          class="text-sm text-gray-600 hover:text-gray-800">
+        <button @click="toggleResetPassword" class="text-sm text-gray-600 hover:text-gray-800">
           {{ showResetPassword ? 'Back to sign in' : 'Forgot your password?' }}
         </button>
       </div>
@@ -96,88 +89,89 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useToast } from 'vue-toastification'
-import { CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
+  import { ref } from 'vue'
+  import { useRouter, useRoute } from 'vue-router'
+  import { useAuthStore } from '@/stores/auth'
+  import { useToast } from 'vue-toastification'
+  import { CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 
-const router = useRouter()
-const route = useRoute()
-const authStore = useAuthStore()
-const toast = useToast()
+  const router = useRouter()
+  const route = useRoute()
+  const authStore = useAuthStore()
+  const toast = useToast()
 
-const isSignUp = ref(false)
-const showResetPassword = ref(false)
-const loading = ref(false)
-const resetLoading = ref(false)
-const resetSuccess = ref(false)
-const error = ref('')
-const resetEmail = ref('')
+  const isSignUp = ref(false)
+  const showResetPassword = ref(false)
+  const loading = ref(false)
+  const resetLoading = ref(false)
+  const resetSuccess = ref(false)
+  const error = ref('')
+  const resetEmail = ref('')
 
-const form = ref({
-  email: '',
-  password: '',
-  displayName: '',
-  role: 'buyer'
-})
+  const form = ref({
+    email: '',
+    password: '',
+    displayName: '',
+    role: 'buyer'
+  })
 
-const getTitle = () => {
-  if (showResetPassword.value) return 'Reset Password'
-  return isSignUp.value ? 'Create Account' : 'Sign In'
-}
+  const getTitle = () => {
+    if (showResetPassword.value) return 'Reset Password'
+    return isSignUp.value ? 'Create Account' : 'Sign In'
+  }
 
-const getSubtitle = () => {
-  if (showResetPassword.value) return 'Enter your email to receive a reset link'
-  return isSignUp.value ? 'Join the MTG community' : 'Welcome back!'
-}
+  const getSubtitle = () => {
+    if (showResetPassword.value) return 'Enter your email to receive a reset link'
+    return isSignUp.value ? 'Join the MTG community' : 'Welcome back!'
+  }
 
-const handleSubmit = async () => {
-  loading.value = true
-  error.value = ''
-  
-  try {
-    if (isSignUp.value) {
-      await authStore.signUp(form.value.email, form.value.password, {
-        display_name: form.value.displayName,
-        role: form.value.role
-      })
-      toast.success('Account created successfully! Please check your email for verification.')
-    } else {
-      await authStore.signIn(form.value.email, form.value.password)
-      toast.success('Welcome back!')
-      
-      // Redirect to intended page or dashboard
-      const redirectTo = route.query.redirect || '/dashboard'
-      router.push(redirectTo)
+  const handleSubmit = async () => {
+    loading.value = true
+    error.value = ''
+
+    try {
+      if (isSignUp.value) {
+        await authStore.signUp(form.value.email, form.value.password, {
+          display_name: form.value.displayName,
+          role: form.value.role
+        })
+
+        toast.success('Account created successfully!')
+      } else {
+        await authStore.signIn(form.value.email, form.value.password)
+        toast.success('Welcome back!')
+
+        // Redirect to intended page or dashboard
+        const redirectTo = route.query.redirect || '/dashboard'
+        router.push(redirectTo)
+      }
+    } catch (err) {
+      error.value = err.message || 'An error occurred'
+    } finally {
+      loading.value = false
     }
-  } catch (err) {
-    error.value = err.message || 'An error occurred'
-  } finally {
-    loading.value = false
   }
-}
 
-const handleResetPassword = async () => {
-  resetLoading.value = true
-  error.value = ''
-  resetSuccess.value = false
-  
-  try {
-    await authStore.resetPassword(resetEmail.value)
-    resetSuccess.value = true
-    toast.success('Password reset link sent to your email!')
-  } catch (err) {
-    error.value = err.message || 'Failed to send reset email'
-  } finally {
-    resetLoading.value = false
+  const handleResetPassword = async () => {
+    resetLoading.value = true
+    error.value = ''
+    resetSuccess.value = false
+
+    try {
+      await authStore.resetPassword(resetEmail.value)
+      resetSuccess.value = true
+      toast.success('Password reset link sent to your email!')
+    } catch (err) {
+      error.value = err.message || 'Failed to send reset email'
+    } finally {
+      resetLoading.value = false
+    }
   }
-}
 
-const toggleResetPassword = () => {
-  showResetPassword.value = !showResetPassword.value
-  error.value = ''
-  resetSuccess.value = false
-  resetEmail.value = ''
-}
+  const toggleResetPassword = () => {
+    showResetPassword.value = !showResetPassword.value
+    error.value = ''
+    resetSuccess.value = false
+    resetEmail.value = ''
+  }
 </script>
