@@ -1,6 +1,6 @@
 // routes/scryfall.js
 import express from 'express'
-import { supabase, superbaseAdmin } from '../server.js'
+import { supabase, supabaseAdmin } from '../server.js'
 import { authenticateAdmin } from '../middleware/auth.js'
 import scryfallService from '../services/scryfallService.js'
 import zlib from 'zlib'
@@ -42,7 +42,7 @@ router.post('/import-card', authenticateAdmin, async (req, res) => {
 
     if (existingCard) {
       // Update existing card
-      const { data: updatedCard, error } = await superbaseAdmin
+      const { data: updatedCard, error } = await supabaseAdmin
         .from('cards')
         .update(transformedCard)
         .eq('id', existingCard.id)
@@ -58,7 +58,7 @@ router.post('/import-card', authenticateAdmin, async (req, res) => {
       })
     } else {
       // Insert new card
-      const { data: newCard, error } = await superbaseAdmin
+      const { data: newCard, error } = await supabaseAdmin
         .from('cards')
         .insert(transformedCard)
         .select()
@@ -130,7 +130,7 @@ router.post('/import-set', authenticateAdmin, async (req, res) => {
 
         // Batch upsert cards
         if (batch.length > 0) {
-          const { data: upsertedCards, error } = await superbaseAdmin
+          const { data: upsertedCards, error } = await supabaseAdmin
             .from('cards')
             .upsert(batch, {
               onConflict: 'scryfall_id',

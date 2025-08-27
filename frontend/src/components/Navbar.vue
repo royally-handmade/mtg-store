@@ -1,17 +1,16 @@
 <script setup>
-  import { onMounted } from 'vue'
   import { useRouter } from 'vue-router'
   import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue'
   import { UserIcon, ShoppingCartIcon, HeartIcon } from '@heroicons/vue/24/outline'
   import { useAuthStore } from '@/stores/auth'
-  import { useWishlistStore } from '@/stores/wishlist'
+  import { useWishlistInit } from '@/composables/useWishlistInit'
   import { useCartStore } from '@/stores/cart'
   import { useToast } from 'vue-toastification'
   import SearchBar from './SearchBar.vue'
 
-  const router = useRouter()
+
   const authStore = useAuthStore()
-  const wishlistStore = useWishlistStore()
+  const { wishlistStore } = useWishlistInit()
   const cartStore = useCartStore()
   const toast = useToast()
 
@@ -25,19 +24,7 @@
     }
   }
 
-  onMounted(async () => {
-    if (authStore.isAuthenticated) {
-      // Initialize stores
-      try {
-        await Promise.all([
-          wishlistStore.fetchWishlist(),
-          cartStore.fetchCart()
-        ])
-      } catch (error) {
-        console.error('Error initializing stores:', error)
-      }
-    }
-  })
+
 </script>
 
 <template>
@@ -49,6 +36,13 @@
         <router-link to="/" class="flex items-center space-x-2">
           <span class="text-xl font-bold text-gray-800">MTG Marketplace</span>
         </router-link>
+
+        <!-- Search Bar -->
+        <div class="flex-1 max-w-xl mx-8">
+          <SearchBar />
+        </div>
+
+        <!-- Navigation Items -->
         <div class="flex items-center space-x-4">
           <!-- Browse Cards -->
           <router-link to="/cards" class="text-gray-700 hover:text-red-700">
@@ -59,24 +53,18 @@
           <router-link v-if="authStore.isAuthenticated" to="/deck-builder" class="text-gray-700 hover:text-red-700">
             Deck Builder
           </router-link>
-        </div>
-        <!-- Search Bar -->
-        <div class="flex-1 max-w-xl mx-8">
-          <SearchBar />
-        </div>
-
-        <!-- Navigation Items -->
-        <div class="flex items-center space-x-4">
-
-
 
           <!-- Wishlist -->
+          <!-- Wishlist -->
           <router-link v-if="authStore.isAuthenticated" to="/wishlist"
-            class="relative text-gray-700 hover:text-red-700">
+            class="relative text-gray-700 hover:text-red-700 transition-colors"
+            :class="{ 'animate-pulse': wishlistStore.loading && !wishlistStore.initialized }"
+          >
             <HeartIcon class="h-6 w-6" />
             <span v-if="wishlistStore.itemCount > 0"
-              class="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {{ wishlistStore.itemCount }}
+              class="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center transition-all duration-200"
+            >
+              {{ wishlistStore.itemCount > 99 ? '99+' : wishlistStore.itemCount }}
             </span>
           </router-link>
 

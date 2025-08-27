@@ -17,7 +17,12 @@ export const useCartStore = defineStore('cart', {
 
   getters: {
     itemCount: (state) => state.items.length,
-    totalPrice: (state) => parseFloat(state.summary.total)
+    totalPrice: (state) => parseFloat(state.summary.total),
+    
+    // Helper to check if a listing is already in cart
+    isInCart: (state) => (listingId) => {
+      return state.items.some(item => item.listing_id === listingId)
+    }
   },
 
   actions: {
@@ -33,6 +38,10 @@ export const useCartStore = defineStore('cart', {
         this.summary = summaryRes.data
       } catch (error) {
         console.error('Error fetching cart:', error)
+        // Don't throw error if user is not authenticated
+        if (error.response?.status !== 401) {
+          throw error
+        }
       } finally {
         this.loading = false
       }
@@ -72,18 +81,29 @@ export const useCartStore = defineStore('cart', {
     async clearCart() {
       try {
         await api.delete('/cart')
-        this.items = []
-        this.summary = {
-          itemCount: 0,
-          subtotal: '0.00',
-          estimatedShipping: '0.00',
-          tax: '0.00',
-          total: '0.00',
-          uniqueSellers: 0
-        }
+        this.resetState()
       } catch (error) {
         throw error
       }
+    },
+
+    // Reset store state (for logout)
+    resetState() {
+      this.items = []
+      this.summary = {
+        itemCount: 0,
+        subtotal: '0.00',
+        estimatedShipping: '0.00',
+        tax: '0.00',
+        total: '0.00',
+        uniqueSellers: 0
+      }
+      this.loading = false
+    },
+
+    // Pinia $reset method
+    $reset() {
+      this.resetState()
     }
   }
 })

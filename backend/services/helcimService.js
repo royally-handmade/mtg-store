@@ -6,7 +6,7 @@ import { supabase } from '../server.js'
 
 class HelcimService {
   constructor() {
-    this.apiKey = process.env.HELCIM_API_KEY
+    this.apiKey = 'aDSfgo7mhVp41HFgN69YS4mvpsR@!7Gonxl1ehQ0jGMxZKlyC9DmUjn8cXQDejZ%'//process.env.HELCIM_API_KEY
     this.merchantId = process.env.HELCIM_MERCHANT_ID
     this.baseURL = process.env.HELCIM_ENVIRONMENT === 'production'
       ? 'https://api.helcim.com/v2'
@@ -16,8 +16,9 @@ class HelcimService {
     this.client = axios.create({
       baseURL: this.baseURL,
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
+        'API-TOKEN': `${this.apiKey}`,
+        'Content-Type': 'application/json',
+        'idempotency-key': crypto.randomUUID()
       }
     })
   }
@@ -30,25 +31,35 @@ class HelcimService {
   async createPaymentIntent(orderData) {
     try {
       const {
+        ip_address,
         amount,
         currency = 'CAD',
         orderId,
         buyerId,
         description,
         billingAddress,
-        shippingAddress
+        card_number,
+        card_expiry,
+        card_cvv
       } = orderData
 
       const payload = {
+        ipAddress: ip_address,
         type: 'purchase',
         amount: Math.round(amount * 100), // Convert to cents
         currency: currency.toUpperCase(),
         description: description || `MTG Marketplace Order #${orderId}`,
-        invoice: orderId.toString(),
+
+        //cardData
+        cardData: {
+          cardNumber: card_number,
+          cardExpiry: card_expiry,
+          cardCVV: card_cvv
+        },
 
         // Customer information
+        //TODO: send customer id if we have it. save customer id upon successful payment
         customer: {
-          customerCode: buyerId,
           contactName: billingAddress?.name,
           businessName: billingAddress?.company,
           email: billingAddress?.email,
@@ -56,7 +67,7 @@ class HelcimService {
         },
 
         // Billing address
-        billing: {
+        billingAddress: {
           name: billingAddress?.name,
           street1: billingAddress?.street1,
           street2: billingAddress?.street2,
@@ -68,18 +79,6 @@ class HelcimService {
           email: billingAddress?.email
         },
 
-        // Shipping address
-        shipping: {
-          name: shippingAddress?.name || billingAddress?.name,
-          street1: shippingAddress?.street1 || billingAddress?.street1,
-          street2: shippingAddress?.street2 || billingAddress?.street2,
-          city: shippingAddress?.city || billingAddress?.city,
-          province: shippingAddress?.province || billingAddress?.province,
-          country: shippingAddress?.country || billingAddress?.country,
-          postalCode: shippingAddress?.postalCode || billingAddress?.postalCode,
-          phone: shippingAddress?.phone || billingAddress?.phone
-        },
-
         // Security and processing options
         test: process.env.HELCIM_ENVIRONMENT !== 'production',
 
@@ -89,6 +88,7 @@ class HelcimService {
         }
       }
 
+      console.log(payload)
       const response = await this.client.post('/payment/preauth', payload)
 
       // Store payment intent in database

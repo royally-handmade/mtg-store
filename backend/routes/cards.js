@@ -63,7 +63,6 @@ router.get('/:id/listings', async (req, res) => {
       .eq('card_id', req.params.id)
       .eq('status', 'active')
       .order('price', { ascending: true })
-    console.log(data)
 
     if (error) throw error
 

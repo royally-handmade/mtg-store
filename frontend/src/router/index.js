@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useWishlistStore } from '@/stores/wishlist'
 
 const routes = [
   {
@@ -37,7 +38,10 @@ const routes = [
     path: '/wishlist',
     name: 'Wishlist',
     component: () => import('@/views/Wishlist.vue'),
-    meta: { requiresAuth: true }
+    meta: { 
+      requiresAuth: true,
+      preloadWishlist: true // New flag for wishlist preloading
+    }
   },
   {
     path: '/wishlist/shared/:id',
@@ -117,6 +121,18 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
     next('/dashboard')
     return
+  }
+
+    if (to.meta.preloadWishlist && authStore.isAuthenticated) {
+    const wishlistStore = useWishlistStore()
+    if (!wishlistStore.initialized) {
+      try {
+        await wishlistStore.initialize()
+      } catch (error) {
+        console.error('Failed to preload wishlist:', error)
+        // Don't block navigation on wishlist load failure
+      }
+    }
   }
 
   next()

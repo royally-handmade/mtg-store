@@ -45,7 +45,7 @@
       <div class="space-y-4">
         <div class="flex items-center gap-3 flex-wrap">
           <h1 class="text-3xl font-bold">{{ displayedCard.name }}</h1>
-          <TreatmentBadge :treatment="displayedCard.treatment" :size="md" />
+          <TreatmentBadge v-if="displayedCard.treatment" :treatment="displayedCard.treatment" />
 
           <!-- Additional badges for special attributes -->
           <span v-if="card.foil" class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
@@ -586,98 +586,109 @@
   const addingToCart = ref(false)
   const addedToCart = ref(new Set()) // Track which listings were added
 
-  // Replace the existing placeholder addToCart function with this implementation
-  const addToCart = async (listing) => {
-    // Check if user is authenticated
-    if (!authStore.isAuthenticated) {
-      toast.error('Please sign in to add items to cart')
-      router.push({ name: 'Auth', query: { redirect: route.fullPath } })
-      return
-    }
-
-    // Prevent adding seller's own listings
-    if (listing.seller_id === authStore.user?.id) {
-      toast.error('You cannot purchase your own listings')
-      return
-    }
-
-    // Check listing availability
-    if (listing.quantity <= 0 || listing.status !== 'active') {
-      toast.error('This listing is no longer available')
-      return
-    }
-
-    addingToCart.value = true
-
-    try {
-      await cartStore.addItem(listing.id, 1)
-      addedToCart.value.add(listing.id)
-
-      toast.success(`Added ${listing.cards?.name || 'card'} to cart`, {
-        timeout: 3000,
-        icon: '🛒'
-      })
-
-      // Auto-remove the "added" state after 3 seconds
-      setTimeout(() => {
-        addedToCart.value.delete(listing.id)
-      }, 3000)
-
-    } catch (error) {
-      console.error('Error adding to cart:', error)
-
-      if (error.response?.status === 409) {
-        toast.warning('This item is already in your cart')
-      } else if (error.response?.status === 400) {
-        toast.error(error.response.data.error || 'Unable to add item to cart')
-      } else {
-        toast.error('Failed to add item to cart. Please try again.')
-      }
-    } finally {
-      addingToCart.value = false
-    }
+const addToCart = async (listing) => {
+  // Check if user is authenticated
+  if (!authStore.isAuthenticated) {
+    toast.error('Please sign in to add items to cart')
+    router.push({ name: 'Auth', query: { redirect: route.fullPath } })
+    return
   }
 
+  // Prevent adding seller's own listings
+  if (listing.seller_id === authStore.user?.id) {
+    toast.error('You cannot purchase your own listings')
+    return
+  }
+
+  // Check if already in cart
+  if (isListingInCart.value(listing)) {
+    toast.warning('This item is already in your cart')
+    return
+  }
+
+  // Check listing availability
+  if (listing.quantity <= 0 || listing.status !== 'active') {
+    toast.error('This listing is no longer available')
+    return
+  }
+
+  addingToCart.value = true
+
+  try {
+    await cartStore.addItem(listing.id, 1)
+    addedToCart.value.add(listing.id)
+
+    toast.success(`Added ${listing.cards?.name || 'card'} to cart`, {
+      timeout: 3000,
+      icon: '🛒'
+    })
+
+    // Auto-remove the "added" state after 3 seconds
+    setTimeout(() => {
+      addedToCart.value.delete(listing.id)
+    }, 3000)
+
+  } catch (error) {
+    console.error('Error adding to cart:', error)
+
+    if (error.response?.status === 409) {
+      toast.warning('This item is already in your cart')
+    } else if (error.response?.status === 400) {
+      toast.error(error.response.data.error || 'Unable to add item to cart')
+    } else {
+      toast.error('Failed to add item to cart. Please try again.')
+    }
+  } finally {
+    addingToCart.value = false
+  }
+}
   // Helper function to check if a listing was recently added
   const wasRecentlyAdded = (listingId) => {
     return addedToCart.value.has(listingId)
   }
 
   // Update the button text and styling based on cart state
-  const getAddToCartButtonText = (listing) => {
-    if (addingToCart.value) return 'Adding...'
-    if (wasRecentlyAdded(listing.id)) return 'Added!'
-    return 'Add to Cart'
+const getAddToCartButtonText = (listing) => {
+  if (addingToCart.value) return 'Adding...'
+  if (wasRecentlyAdded(listing.id)) return 'Added!'
+  if (isListingInCart.value(listing)) return 'In Cart'
+  return 'Add to Cart'
+}
+
+const getAddToCartButtonClass = (listing) => {
+  const baseClasses = 'px-4 py-2 rounded text-sm transition-colors font-medium'
+
+  if (addingToCart.value) {
+    return `${baseClasses} bg-gray-400 text-white cursor-not-allowed`
   }
 
-  const getAddToCartButtonClass = (listing) => {
-    const baseClasses = 'px-4 py-2 rounded text-sm transition-colors font-medium'
-
-    if (addingToCart.value) {
-      return `${baseClasses} bg-gray-400 text-white cursor-not-allowed`
-    }
-
-    if (wasRecentlyAdded(listing.id)) {
-      return `${baseClasses} bg-green-600 text-white`
-    }
-
-    if (listing.seller_id === authStore.user?.id) {
-      return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
-    }
-
-    if (listing.quantity <= 0 || listing.status !== 'active') {
-      return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
-    }
-
-    return `${baseClasses} bg-green-600 text-white hover:bg-green-700`
+  if (wasRecentlyAdded(listing.id)) {
+    return `${baseClasses} bg-green-600 text-white`
   }
+
+  if (isListingInCart.value(listing)) {
+    return `${baseClasses} bg-blue-600 text-white cursor-not-allowed`
+  }
+
+  if (listing.seller_id === authStore.user?.id) {
+    return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
+  }
+
+  if (listing.quantity <= 0 || listing.status !== 'active') {
+    return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
+  }
+
+  return `${baseClasses} bg-green-600 text-white hover:bg-green-700`
+}
 
   // Function to check if button should be disabled
-  const isAddToCartDisabled = (listing) => {
-    return addingToCart.value ||
-      listing.seller_id === authStore.user?.id ||
-      listing.quantity <= 0 || listing.status !== 'active'
-  }
+const isAddToCartDisabled = (listing) => {
+  return addingToCart.value ||
+    isListingInCart.value(listing) ||
+    listing.seller_id === authStore.user?.id ||
+    listing.quantity <= 0 || 
+    listing.status !== 'active'
+}
 
   const addToWishlist = (listing) => {
     // Add to wishlist with price watching
@@ -703,6 +714,10 @@
     // Open the listing modal
     showAddListing.value = true
   }
+//Check if the listing is already in the cart.
+  const isListingInCart = computed(() => (listing) => {
+  return cartStore.isInCart(listing.id)
+})
 
   // Handle successful listing creation
   const onListingCreated = async (newListing) => {

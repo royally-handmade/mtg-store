@@ -5,6 +5,8 @@
       <router-view />
     </main>
     <Footer />
+    
+    <!-- Development Debug Panel -->
   </div>
 </template>
 
@@ -12,35 +14,60 @@
 import { onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useWishlistStore } from '@/stores/wishlist'
+import { useCartStore } from '@/stores/cart'
 import { useToast } from 'vue-toastification'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const wishlistStore = useWishlistStore()
+const cartStore = useCartStore()
 const toast = useToast()
+
 
 onMounted(async () => {
   await authStore.initialize()
 })
 
-// Watch for authentication state changes and handle redirects
-watch(() => authStore.isAuthenticated, (isAuth, wasAuth) => {
+// Watch for authentication state changes
+watch(() => authStore.isAuthenticated, async (isAuth, wasAuth) => {
   if (isAuth && !wasAuth) {
-    // User just logged in or confirmed their email
-    const currentRoute = router.currentRoute.value
+    // User just logged in
+    console.log('🔐 User logged in, initializing stores...')
     
-    // If they're on the auth page, redirect them to home
-    if (currentRoute.name === 'Auth') {
-      const redirectTo = currentRoute.query.redirect || '/'
-      router.push(redirectTo)
-      toast.success('Welcome! You have been signed in.')
+    try {
+      const startTime = performance.now()
+      
+      await Promise.all([
+        wishlistStore.fetchWishlist(), // Use fetchWishlist instead of initialize
+        cartStore.fetchCart() // Use fetchCart instead of initialize
+      ])
+      
+      const endTime = performance.now()
+      console.log(`✅ Stores initialized in ${(endTime - startTime).toFixed(2)}ms`)
+      
+      // Handle redirect
+      const currentRoute = router.currentRoute.value
+      if (currentRoute.name === 'Auth') {
+        const redirectTo = currentRoute.query.redirect || '/'
+        router.push(redirectTo)
+        toast.success('Welcome! You have been signed in.')
+      }
+      
+    } catch (error) {
+      console.error('❌ Error initializing user stores:', error)
     }
+    
   } else if (!isAuth && wasAuth) {
     // User just logged out
-    const currentRoute = router.currentRoute.value
+    console.log('🔐 User logged out, resetting stores...')
     
-    // Redirect to home page unless already there
+    wishlistStore.reset()
+    cartStore.reset()
+    
+    const currentRoute = router.currentRoute.value
     if (currentRoute.path !== '/') {
       router.push('/')
       toast.success('You have been signed out')

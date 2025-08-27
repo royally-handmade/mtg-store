@@ -21,7 +21,7 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-        <input v-model="form.password" type="password" required class="input-field" placeholder="••••••••" />
+        <input v-model="form.password" type="current-password" required class="input-field" placeholder="••••••••" />
       </div>
 
       <div v-if="isSignUp">
@@ -139,7 +139,6 @@
         toast.success('Account created successfully!')
       } else {
         await authStore.signIn(form.value.email, form.value.password)
-        toast.success('Welcome back!')
 
         // Redirect to intended page or dashboard
         const redirectTo = route.query.redirect || '/dashboard'

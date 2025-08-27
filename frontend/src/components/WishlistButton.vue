@@ -1,5 +1,5 @@
 <template>
-  <div class="wishlist-button-container mt-4">
+  <div class="wishlist-button-container">
     <!-- Main Wishlist Toggle Button -->
     <button 
       @click="toggleWishlist" 
@@ -57,10 +57,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { HeartIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useWishlistStore } from '@/stores/wishlist'
+import { useWishlistInit } from '@/composables/useWishlistInit'
 import { useToast } from 'vue-toastification'
 
 const props = defineProps({
@@ -79,8 +80,10 @@ const props = defineProps({
 })
 
 const authStore = useAuthStore()
-const wishlistStore = useWishlistStore()
 const toast = useToast()
+
+// Use the initialization composable instead of manual fetching
+const { wishlistStore } = useWishlistInit()
 
 const loading = ref(false)
 const alertLoading = ref(false)
@@ -142,14 +145,4 @@ watch(() => currentWishlistItem.value, (item) => {
     maxPrice.value = item.max_price
   }
 }, { immediate: true })
-
-onMounted(async () => {
-  if (authStore.isAuthenticated && wishlistStore.items.length === 0) {
-    try {
-      await wishlistStore.fetchWishlist()
-    } catch (error) {
-      console.error('Error loading wishlist:', error)
-    }
-  }
-})
-</script> 
+</script>

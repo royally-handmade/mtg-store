@@ -1,13 +1,8 @@
 // backend/middleware/auth.js
 import dotenv from 'dotenv'
-import { createClient } from '@supabase/supabase-js'
+import { supabase, supabaseAdmin } from '../server.js'
 
 dotenv.config()
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-)
 
 export const authenticateUser = async (req, res, next) => {
   try {
@@ -22,10 +17,11 @@ export const authenticateUser = async (req, res, next) => {
     }
 
     // Profile should exist due to database trigger
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('id', user.id)
+      .single()
 
     if (profileError) {
       console.error('Error fetching profile:', profileError)

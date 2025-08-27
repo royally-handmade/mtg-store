@@ -39,10 +39,10 @@ const PORT = process.env.PORT || 3000
 // Supabase client
 export const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_SECRET_KEY
 )
 
-export const superbaseAdmin = createClient(
+export const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 )
@@ -137,14 +137,14 @@ app.use('*', (req, res) => {
 })
 
 //Wishlist Analytics Service
-app.get('/api/analytics/wishlist-popular', async (req, res) => {
-  try {
-    const popularCards = await WishlistAnalyticsService.getPopularWishlistCards(20)
-    res.json(popularCards)
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch popular wishlist cards' })
-  }
-})
+//app.get('/api/analytics/wishlist-popular', async (req, res) => {
+//  try {
+//    const popularCards = await WishlistAnalyticsService.getPopularWishlistCards(20)
+//    res.json(popularCards)
+//  } catch (error) {
+//    res.status(500).json({ error: 'Failed to fetch popular wishlist cards' })
+//  }
+//})
 
 // Optional: Run initial price calculation on server startup
 // Uncomment this section if you want to calculate prices immediately when server starts

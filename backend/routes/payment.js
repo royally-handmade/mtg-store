@@ -12,10 +12,10 @@ const router = express.Router()
 // ===== PAYMENT PROCESSING =====
 
 // Create payment intent
-router.post('/create-intent', [
-  body('order_id').isUUID().withMessage('Valid order ID required'),
+router.post('/create-intent', authenticateUser, [
   body('amount').isFloat({ min: 0.01 }).withMessage('Valid amount required'),
-  body('currency').optional().isIn(['CAD', 'USD']).withMessage('Currency must be CAD or USD')
+  body('currency').optional().isIn(['CAD', 'USD']).withMessage('Currency must be CAD or USD'),
+  body('items').isArray({ min: 1 }).withMessage('Items required for intent creation')
 ], async (req, res) => {
   try {
     const errors = validationResult(req)
@@ -23,65 +23,49 @@ router.post('/create-intent', [
       return res.status(400).json({ error: 'Validation failed', details: errors.array() })
     }
 
-    const { order_id, amount, currency = 'CAD', billing_address, shipping_address } = req.body
+    const { 
+      amount, 
+      currency = 'CAD', 
+      billing_address, 
+      items,
+      subtotal,
+      shipping_cost,
+      tax_amount,
+      card_number,
+      card_expiry,
+      card_cvv
+    } = req.body
 
-    // Get order details
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        buyer:buyer_id(display_name, email),
-        order_items(
-          *,
-          listings(
-            *,
-            cards(name, set_name)
-          )
-        )
-      `)
-      .eq('id', order_id)
-      .single()
+    // Generate a temporary order ID for the payment intent
+    const tempOrderId = `temp_${Date.now()}_${req.user.id}`
 
-    if (orderError || !order) {
-      return res.status(404).json({ error: 'Order not found' })
-    }
-
-    if (order.status !== 'pending') {
-      return res.status(400).json({ error: 'Order is not pending payment' })
-    }
-
-    // Create description
-    const itemNames = order.order_items.map(item => item.listings.cards.name).slice(0, 3)
-    const description = `MTG Cards: ${itemNames.join(', ')}${order.order_items.length > 3 ? '...' : ''}`
+    // Create description from items
+    const itemNames = items.slice(0, 3).map(item => `Item ${item.listing_id}`)
+    const description = `MTG Cards: ${itemNames.join(', ')}${items.length > 3 ? ` +${items.length - 3} more` : ''}`
 
     // Create payment intent with Helcim
     const paymentIntent = await helcimService.createPaymentIntent({
+      ip_address: req.ip,
       amount: amount,
       currency: currency,
-      orderId: order_id,
-      buyerId: order.buyer_id,
+      orderId: tempOrderId,
+      buyerId: req.user.id,
       description: description,
       billingAddress: billing_address,
-      shippingAddress: shipping_address
+      card_number: card_number,
+      card_expiry: card_expiry,
+      card_cvv: card_cvv
     })
-
-    // Update order with payment intent details
-    await supabase
-      .from('orders')
-      .update({
-        payment_intent_id: paymentIntent.paymentIntentId,
-        payment_status: 'pending',
-        updated_at: new Date()
-      })
-      .eq('id', order_id)
 
     res.json({
       success: true,
       payment_intent: paymentIntent,
-      order: {
-        id: order.id,
-        total_amount: order.total_amount,
-        currency: currency
+      summary: {
+        subtotal,
+        shipping_cost,
+        tax_amount,
+        total_amount: amount,
+        currency
       }
     })
   } catch (error) {

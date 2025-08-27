@@ -499,6 +499,7 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
+import api from '@/lib/api'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -513,7 +514,7 @@ const shippingAddress = reactive({
   city: '',
   province: '',
   postalCode: '',
-  country: 'CA',
+  country: 'CAN',
   phone: ''
 })
 
@@ -524,7 +525,7 @@ const billingAddress = reactive({
   city: '',
   province: '',
   postalCode: '',
-  country: 'CA'
+  country: 'CAN'
 })
 
 const paymentInfo = reactive({
@@ -619,13 +620,7 @@ const calculateShipping = async () => {
       return
     }
     
-    const response = await fetch('/api/shipping/calculate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
+    const response = await api.post('/shipping/calculate', {
         items: cartStore.items.map(item => ({
           listing_id: item.listings?.id || item.id,
           quantity: item.quantity
@@ -637,10 +632,9 @@ const calculateShipping = async () => {
           city: shippingAddress.city,
           province: shippingAddress.province,
           postalCode: shippingAddress.postalCode,
-          country: shippingAddress.country,
+          country: 'CAN',//shippingAddress.country, //TODO: Convert to iso-code-3 from country
           phone: shippingAddress.phone
         }
-      })
     })
     
     if (response.ok) {
@@ -665,52 +659,25 @@ const calculateShipping = async () => {
   }
 }
 
-const createOrder = async () => {
+const processPaymentAndCreateOrder = async () => {
   try {
-    const response = await fetch('/api/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
-        items: cartStore.items,
-        shipping_address: shippingAddress,
-        billing_address: sameAsShipping.value ? shippingAddress : billingAddress,
-        subtotal: parseFloat(cartStore.summary.subtotal),
-        shipping_cost: shippingCost.value,
-        tax_amount: taxAmount.value,
-        total_amount: totalAmount.value
-      })
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to create order')
-    }
-    
-    return await response.json()
-  } catch (error) {
-    console.error('Error creating order:', error)
-    throw error
-  }
-}
-
-const processPayment = async (orderId) => {
-  try {
-    // Create payment intent
-    const intentResponse = await fetch('/api/payment/create-intent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
-        order_id: orderId,
+    // First, create payment intent without creating order
+    const intentResponse = await api.post('/payment/create-intent', {
+        items: cartStore.items.map(item => ({
+          listing_id: item.listings?.id || item.id,
+          quantity: item.quantity,
+          price: item.listings?.price
+        })),
         amount: totalAmount.value,
         currency: 'CAD',
         billing_address: sameAsShipping.value ? shippingAddress : billingAddress,
-        shipping_address: shippingAddress
-      })
+        shipping_cost: shippingCost.value,
+        tax_amount: taxAmount.value,
+        subtotal: parseFloat(cartStore.summary.subtotal),
+                card_number: paymentInfo.cardNumber.replace(/\s/g, ''),
+        card_expiry: paymentInfo.expiryDate,
+        card_cvv: paymentInfo.cvc,
+        cardholder_name: paymentInfo.cardholderName,
     })
     
     if (!intentResponse.ok) {
@@ -721,31 +688,46 @@ const processPayment = async (orderId) => {
     const intentData = await intentResponse.json()
     
     // Process payment with card details
-    const paymentResponse = await fetch('/api/payment/process', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
+    const paymentResponse = await api.post('/order/process-and-create-order', {
         payment_intent_id: intentData.payment_intent.paymentIntentId,
-        order_id: orderId,
         card_number: paymentInfo.cardNumber.replace(/\s/g, ''),
         expiry_month: paymentInfo.expiryDate.split('/')[0],
         expiry_year: '20' + paymentInfo.expiryDate.split('/')[1],
         cvc: paymentInfo.cvc,
-        cardholder_name: paymentInfo.cardholderName
-      })
+        cardholder_name: paymentInfo.cardholderName,
+        // Order data to create only after successful payment
+        order_data: {
+          items: cartStore.items.map(item => ({
+            listing_id: item.listings?.id || item.id,
+            quantity: item.quantity
+          })),
+          shipping_address: shippingAddress,
+          billing_address: sameAsShipping.value ? shippingAddress : billingAddress,
+          subtotal: parseFloat(cartStore.summary.subtotal),
+          shipping_cost: shippingCost.value,
+          tax_amount: taxAmount.value,
+          total_amount: totalAmount.value,
+          shipping_details: shippingDetails.value
+        }
     })
     
     if (!paymentResponse.ok) {
       const error = await paymentResponse.json()
+
+      //TODO: save customer id to users table to reference later.
+      //TODO: implement save card on file
       throw new Error(error.error || 'Payment failed')
     }
     
-    return await paymentResponse.json()
+    const result = await paymentResponse.json()
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Payment failed')
+    }
+    
+    return result
   } catch (error) {
-    console.error('Error processing payment:', error)
+    console.error('Error processing payment and creating order:', error)
     throw error
   }
 }
@@ -760,23 +742,20 @@ const processOrder = async () => {
       return
     }
     
-    // Create order
-    const order = await createOrder()
+    // Process payment and create order atomically
+    const result = await processPaymentAndCreateOrder()
     
-    // Process payment
-    const paymentResult = await processPayment(order.id)
-    
-    if (paymentResult.success) {
-      // Clear cart
+    if (result.success) {
+      // Clear cart only after successful payment and order creation
       await cartStore.clearCart()
       
       // Show success message
       toast.success('Order placed successfully!')
       
       // Redirect to order confirmation
-      router.push(`/orders/${order.id}`)
+      router.push(`/orders/${result.order.id}`)
     } else {
-      throw new Error(paymentResult.error || 'Payment failed')
+      throw new Error(result.error || 'Order processing failed')
     }
   } catch (error) {
     console.error('Order processing error:', error)

@@ -17,7 +17,7 @@
         class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
     </div>
     <div class="p-4">
-    <TreatmentBadge :treatment="card.treatment" size="sm" />
+    <TreatmentBadge v-if="card.treatment" :treatment="card.treatment"/>
       <h3 class="font-semibold text-lg mb-1 truncate">{{ card.name }}</h3>
       <p class="text-sm text-gray-600 mb-2">{{ card.set_number.toUpperCase() }} • {{ card.rarity.toUpperCase() }}</p>
       <div class="flex justify-between items-center">

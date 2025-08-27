@@ -176,7 +176,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useWishlistStore } from '@/stores/wishlist'
+import { useWishlistInit } from '@/composables/useWishlistInit'
 import { useCartStore } from '@/stores/cart'
 import { useToast } from 'vue-toastification'
 import { 
@@ -195,7 +195,7 @@ import ConfirmModal from '@/components/ConfirmModal.vue'
 import PriceAlertModal from '@/components/PriceAlertModal.vue'
 
 const router = useRouter()
-const wishlistStore = useWishlistStore()
+const { wishlistStore } = useWishlistInit()
 const cartStore = useCartStore()
 const toast = useToast()
 
@@ -237,7 +237,7 @@ const addAllToCart = async () => {
     }
     
     if (result.failCount > 0) {
-      toast.warning(`${result.failCount} items could not be added (may be unavailable)`)
+      toast.warning(`${result.failCount} items could not be added`)
     }
     
     if (result.successCount > 0) {

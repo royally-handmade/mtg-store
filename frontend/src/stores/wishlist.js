@@ -5,7 +5,9 @@ export const useWishlistStore = defineStore('wishlist', {
   state: () => ({
     items: [],
     loading: false,
+    initialized: false, // Track if wishlist has been loaded
     wishlistIds: new Set(), // Quick lookup for wishlist status
+    error: null
   }),
 
   getters: {
@@ -17,44 +19,140 @@ export const useWishlistStore = defineStore('wishlist', {
     },
     isInWishlist: (state) => (cardId) => {
       return state.wishlistIds.has(cardId)
-    }
+    },
+    isReady: (state) => state.initialized && !state.loading
   },
 
   actions: {
+    // Main fetch method with deduplication logic
     async fetchWishlist() {
+      // If already initialized, don't fetch again
+      if (this.initialized && !this.error) {
+        return this.items
+      }
+
+      // If already loading, wait for it to complete
+      if (this.loading) {
+        return new Promise((resolve, reject) => {
+          const checkLoading = () => {
+            if (!this.loading) {
+              if (this.error) {
+                reject(this.error)
+              } else {
+                resolve(this.items)
+              }
+            } else {
+              setTimeout(checkLoading, 50)
+            }
+          }
+          checkLoading()
+        })
+      }
+
       this.loading = true
+      this.error = null
+      
       try {
         const response = await api.get('/wishlist')
         this.items = response.data || []
         this.wishlistIds = new Set(this.items.map(item => item.card_id))
+        this.initialized = true
+        console.log('✅ Wishlist fetched successfully:', this.items.length, 'items')
+        return this.items
       } catch (error) {
-        console.error('Error fetching wishlist:', error)
-        throw error
+        console.error('❌ Error fetching wishlist:', error)
+        this.error = error
+        // Don't throw - let components handle gracefully
+        this.items = []
+        this.wishlistIds = new Set()
+        this.initialized = true // Mark as initialized even on error to prevent retries
+        return this.items
       } finally {
         this.loading = false
       }
     },
 
-    async addToWishlist(cardId, options = {}) {
+    // Force refresh - useful when data might be stale
+    async refresh() {
+      this.initialized = false
+      this.error = null
+      return await this.fetchWishlist()
+    },
+
+    // Reset store (useful for logout)
+    reset() {
+      this.items = []
+      this.wishlistIds = new Set()
+      this.loading = false
+      this.initialized = false
+      this.error = null
+    },
+
+    // Safe add method with duplicate checking and error handling
+    async safeAddToWishlist(cardId, options = {}) {
       try {
+        // Ensure wishlist is initialized first
+        if (!this.initialized) {
+          await this.initialize()
+        }
+
+        // Check if already in wishlist
+        if (this.isInWishlist(cardId)) {
+          return {
+            success: false,
+            alreadyExists: true,
+            message: 'Card is already in your wishlist'
+          }
+        }
+
         const response = await api.post('/wishlist', {
           card_id: cardId,
           max_price: options.maxPrice || null,
           condition_preference: options.conditionPreference || null
         })
         
+        // Update local state optimistically
         this.items.push(response.data)
         this.wishlistIds.add(cardId)
-        return response.data
+        
+        return {
+          success: true,
+          data: response.data,
+          message: 'Added to wishlist'
+        }
       } catch (error) {
         console.error('Error adding to wishlist:', error)
-        throw error
+        
+        // Handle specific error cases
+        if (error.response?.status === 409) {
+          return {
+            success: false,
+            alreadyExists: true,
+            message: 'Card is already in your wishlist'
+          }
+        }
+        
+        return {
+          success: false,
+          error: error.message,
+          message: 'Failed to add to wishlist'
+        }
       }
+    },
+
+    async addToWishlist(cardId, options = {}) {
+      const result = await this.safeAddToWishlist(cardId, options)
+      if (!result.success && !result.alreadyExists) {
+        throw new Error(result.message)
+      }
+      return result.data
     },
 
     async removeFromWishlist(cardId) {
       try {
         await api.delete(`/wishlist/${cardId}`)
+        
+        // Update local state optimistically
         this.items = this.items.filter(item => item.card_id !== cardId)
         this.wishlistIds.delete(cardId)
       } catch (error) {
