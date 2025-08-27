@@ -1,6 +1,8 @@
 <!-- frontend/src/components/seller/SellerSettings.vue -->
 <template>
   <div class="space-y-6">
+  <ShippingSettings />
+    
     <div class="bg-white rounded-lg shadow p-6">
       <h3 class="text-lg font-medium text-gray-900 mb-6">Payout Settings</h3>
       
@@ -322,6 +324,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { InformationCircleIcon, CurrencyDollarIcon } from '@heroicons/vue/24/outline'
 import api from '@/lib/api'
+
+//components
+import ShippingSettings from '@/components/seller/ShippingSettings.vue'
 
 const emit = defineEmits(['updated'])
 

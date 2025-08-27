@@ -216,6 +216,7 @@
         <div v-if="activeTab === 'settings'">
           <SellerSettings @updated="loadStats" />
         </div>
+        
       </div>
     </div>
 

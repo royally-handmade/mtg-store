@@ -8,11 +8,11 @@ class HelcimService {
   constructor() {
     this.apiKey = process.env.HELCIM_API_KEY
     this.merchantId = process.env.HELCIM_MERCHANT_ID
-    this.baseURL = process.env.HELCIM_ENVIRONMENT === 'production' 
-      ? 'https://api.helcim.com/v2' 
+    this.baseURL = process.env.HELCIM_ENVIRONMENT === 'production'
+      ? 'https://api.helcim.com/v2'
       : 'https://api.helcim.com/v2/test'
     this.webhookSecret = process.env.HELCIM_WEBHOOK_SECRET
-    
+
     this.client = axios.create({
       baseURL: this.baseURL,
       headers: {
@@ -45,7 +45,7 @@ class HelcimService {
         currency: currency.toUpperCase(),
         description: description || `MTG Marketplace Order #${orderId}`,
         invoice: orderId.toString(),
-        
+
         // Customer information
         customer: {
           customerCode: buyerId,
@@ -82,7 +82,7 @@ class HelcimService {
 
         // Security and processing options
         test: process.env.HELCIM_ENVIRONMENT !== 'production',
-        
+
         // Webhook and redirect URLs
         webhook: {
           url: `${process.env.API_BASE_URL}/api/payment/helcim-webhook`
@@ -90,10 +90,10 @@ class HelcimService {
       }
 
       const response = await this.client.post('/payment/preauth', payload)
-      
+
       // Store payment intent in database
       await this.storePaymentIntent(response.data, orderId)
-      
+
       return {
         success: true,
         paymentIntentId: response.data.transactionId,
@@ -116,13 +116,13 @@ class HelcimService {
       const payload = {
         transactionId: transactionId
       }
-      
+
       if (amount) {
         payload.amount = Math.round(amount * 100) // Convert to cents
       }
 
       const response = await this.client.post('/payment/capture', payload)
-      
+
       return {
         success: true,
         transactionId: response.data.transactionId,
@@ -147,10 +147,10 @@ class HelcimService {
       }
 
       const response = await this.client.post('/payment/refund', payload)
-      
+
       // Log the refund
       await this.logTransaction('refund', response.data, { reason })
-      
+
       return {
         success: true,
         refundId: response.data.transactionId,
@@ -184,7 +184,7 @@ class HelcimService {
         amount: Math.round(amount * 100), // Convert to cents
         currency: 'CAD',
         description: description || `Seller payout - ${reference}`,
-        
+
         // Bank account details
         achDetails: {
           accountType: bankDetails.accountType || 'checking', // 'checking' or 'savings'
@@ -207,7 +207,7 @@ class HelcimService {
       }
 
       const response = await this.client.post('/payment/ach', payload)
-      
+
       return {
         success: true,
         payoutId: response.data.transactionId,
@@ -227,7 +227,7 @@ class HelcimService {
   async getPayoutStatus(transactionId) {
     try {
       const response = await this.client.get(`/payment/${transactionId}`)
-      
+
       return {
         success: true,
         status: response.data.status,
@@ -518,7 +518,7 @@ class HelcimService {
         businessName: customerData.businessName,
         email: customerData.email,
         phone: customerData.phone,
-        
+
         // Billing address
         billingAddress: {
           street1: customerData.billingAddress.street1,
@@ -531,7 +531,7 @@ class HelcimService {
       }
 
       const response = await this.client.post('/customer-vault', payload)
-      
+
       return {
         success: true,
         customerId: response.data.customerId,
@@ -540,6 +540,66 @@ class HelcimService {
     } catch (error) {
       console.error('Helcim customer token creation failed:', error.response?.data || error.message)
       throw new Error(`Customer token creation failed: ${error.response?.data?.message || error.message}`)
+    }
+  }
+
+  /**
+   * Process payment with card details
+   */
+  async processPayment(paymentData) {
+    try {
+      const {
+        paymentIntentId,
+        cardNumber,
+        expiryMonth,
+        expiryYear,
+        cvc,
+        cardholderName,
+        amount
+      } = paymentData
+
+      const payload = {
+        paymentIntentId: paymentIntentId,
+        cardData: {
+          cardNumber: cardNumber,
+          cardExpiry: `${expiryMonth.toString().padStart(2, '0')}${expiryYear.toString().slice(-2)}`,
+          cardCVV: cvc,
+          cardHolderName: cardholderName
+        },
+        amount: Math.round(amount * 100), // Convert to cents
+        confirmPayment: true
+      }
+
+      const response = await this.client.post('/payment/process', payload)
+
+      if (response.data.status === 'APPROVED') {
+        // Log successful transaction
+        await this.logTransaction('payment', response.data, 'success')
+
+        return {
+          success: true,
+          transactionId: response.data.transactionId,
+          amount: response.data.amount / 100,
+          status: response.data.status,
+          message: response.data.message
+        }
+      } else {
+        // Log failed transaction
+        await this.logTransaction('payment', response.data, 'failed')
+
+        return {
+          success: false,
+          error: response.data.message || 'Payment declined',
+          status: response.data.status
+        }
+      }
+    } catch (error) {
+      console.error('Helcim payment processing failed:', error.response?.data || error.message)
+
+      // Log error
+      await this.logTransaction('payment', error.response?.data || { error: error.message }, 'error')
+
+      throw new Error(`Payment processing failed: ${error.response?.data?.message || error.message}`)
     }
   }
 
@@ -567,7 +627,7 @@ class HelcimService {
       }
 
       const response = await this.client.post('/payment/process', payload)
-      
+
       return {
         success: true,
         transactionId: response.data.transactionId,

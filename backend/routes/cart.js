@@ -21,7 +21,6 @@ router.get('/', authenticateUser, async (req, res) => {
             rating,
             shipping_address,
             seller_tier,
-            response_time,
             created_at
           )
         )

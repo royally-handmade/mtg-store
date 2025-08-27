@@ -84,7 +84,16 @@ const routes = [
     name: 'ScryfallAdmin',
     component: () => import('@/views/ScryfallAdmin.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+  path: '/checkout',
+  name: 'Checkout',
+  component: () => import('@/views/Checkout.vue'),
+  meta: { 
+    requiresAuth: true,
+    title: 'Checkout - MTG Marketplace' 
   }
+}
 ]
 
 const router = createRouter({

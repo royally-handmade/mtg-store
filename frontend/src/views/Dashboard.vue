@@ -138,7 +138,7 @@ const wishlistItems = ref([])
 const fetchDashboardData = async () => {
   try {
     const [ordersRes, wishlistRes, cartRes] = await Promise.all([
-      api.get('/orders/my-orders?limit=5'),
+      api.get('/orders'),
       api.get('/wishlist?limit=6'),
       api.get('/cart/summary')
     ])

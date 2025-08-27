@@ -776,7 +776,6 @@ const signOutEverywhere = async () => {
   try {
     await api.post('/auth/sign-out-all')
     await authStore.signOut()
-    router.push('/auth')
     toast.success('Signed out from all devices')
   } catch (error) {
     toast.error('Failed to sign out from all devices')

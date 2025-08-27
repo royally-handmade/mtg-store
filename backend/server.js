@@ -22,6 +22,7 @@ import usersRoutes from './routes/users.js'
 import './services/priceMonitoringService.js'
 import { WishlistAnalyticsService } from './services/wishlistAnalyticsService.js'
 import searchRoutes from './routes/search.js'
+import { marketPriceService } from './services/marketPriceService.js'
 
 // Import middleware
 import { authenticateUser } from './middleware/auth.js'
@@ -54,6 +55,7 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 app.use(rateLimitMiddleware)
 
+
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/cards', cardsRoutes)
@@ -72,20 +74,54 @@ app.use('/api/search', searchRoutes)
 
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  })
-})
-
-app.get('/api/analytics/wishlist-popular', async (req, res) => {
+app.get('/api/health', async (req, res) => {
   try {
-    const popularCards = await WishlistAnalyticsService.getPopularWishlistCards(20)
-    res.json(popularCards)
+    const healthCheck = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      services: {}
+    }
+
+    // Test database connection
+    try {
+      const { data: dbTest, error: dbError } = await supabase
+        .from('cards')
+        .select('id')
+        .limit(1)
+
+      if (dbError) throw dbError
+      healthCheck.services.database = 'connected'
+    } catch (error) {
+      healthCheck.services.database = `error: ${error.message}`
+      healthCheck.status = 'degraded'
+    }
+
+    // Test market price service
+    try {
+      const priceStats = await marketPriceService.getMarketPriceStats()
+      healthCheck.services.marketPriceService = 'active'
+      healthCheck.marketPriceStats = {
+        totalCardsWithPrices: priceStats.totalCardsWithPrices,
+        averageMarketPrice: priceStats.averageMarketPrice,
+        recentlyUpdated: priceStats.recentlyUpdated,
+        priceSourceBreakdown: priceStats.priceSourceBreakdown
+      }
+    } catch (error) {
+      healthCheck.services.marketPriceService = `error: ${error.message}`
+      healthCheck.status = 'degraded'
+    }
+
+    // Return appropriate HTTP status
+    const httpStatus = healthCheck.status === 'healthy' ? 200 : 503
+    res.status(httpStatus).json(healthCheck)
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch popular wishlist cards' })
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    })
   }
 })
 
@@ -100,8 +136,67 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' })
 })
 
+//Wishlist Analytics Service
+app.get('/api/analytics/wishlist-popular', async (req, res) => {
+  try {
+    const popularCards = await WishlistAnalyticsService.getPopularWishlistCards(20)
+    res.json(popularCards)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch popular wishlist cards' })
+  }
+})
+
+// Optional: Run initial price calculation on server startup
+// Uncomment this section if you want to calculate prices immediately when server starts
+/*setTimeout(async () => {
+  try {
+    console.log('🔄 Running initial market price calculation...')
+    
+    // Only update cards that have sales data to avoid overwhelming the system
+    const result = await marketPriceService.calculateAllMarketPrices({
+      onlyCardsWithSales: true, // Only cards with actual sales
+      batchSize: 25             // Smaller batch size for startup
+    })
+    
+    console.log(`✅ Initial price calculation complete: ${result.successful} cards updated, ${result.failed} failed`)
+    
+    // Also create initial price snapshots if needed
+    await marketPriceService.createDailyPriceSnapshots()
+    console.log('📸 Initial price snapshots created')
+    
+  } catch (error) {
+    console.error('❌ Error in initial price calculation:', error)
+    // Don't crash the server if price calculation fails
+  }
+}, 5000) // Wait 5 seconds after server startup to let everything settle
+
+process.on('unhandledRejection', (error) => {
+  // Check if the error is related to market price calculations
+  if (error.message?.includes('market_price') || 
+      error.message?.includes('price_history') ||
+      error.message?.includes('calculateMarketPrice')) {
+    
+    console.error('❌ Market price service error (non-fatal):', error)
+    
+    // Log additional context
+    console.error('Error stack:', error.stack)
+    console.error('Error occurred at:', new Date().toISOString())
+    
+    // Don't crash the server for price calculation errors
+    // The main application should continue running even if price calc fails
+    return
+  }
+  
+  // Re-throw other errors that should crash the server
+  console.error('💥 Critical server error:', error)
+  throw error
+})
+  */
+
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`)
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`)
   console.log(`❤️ Wishlist functionality: Enabled`)
+
 })

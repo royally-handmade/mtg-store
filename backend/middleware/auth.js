@@ -26,11 +26,11 @@ export const authenticateUser = async (req, res, next) => {
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single()
 
     if (profileError) {
       console.error('Error fetching profile:', profileError)
-      return res.status(500).json({ error: 'Failed to fetch user profile' })
+      return res.status(500).json({ error: 'Failed to fetch user profile - ' + JSON.stringify(profileError) })
+    } {
     }
 
     req.user = user

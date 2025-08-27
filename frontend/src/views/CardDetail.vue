@@ -45,7 +45,7 @@
       <div class="space-y-4">
         <div class="flex items-center gap-3 flex-wrap">
           <h1 class="text-3xl font-bold">{{ displayedCard.name }}</h1>
-          <TreatmentBadge :treatment="displayedCard.treatment" size="md" />
+          <TreatmentBadge :treatment="displayedCard.treatment" :size="md" />
 
           <!-- Additional badges for special attributes -->
           <span v-if="card.foil" class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
