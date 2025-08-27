@@ -21,9 +21,23 @@ export const authenticateUser = async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid token' })
     }
 
+    // Profile should exist due to database trigger
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) {
+      console.error('Error fetching profile:', profileError)
+      return res.status(500).json({ error: 'Failed to fetch user profile' })
+    }
+
     req.user = user
+    req.userProfile = profile
     next()
   } catch (error) {
+    console.error('Authentication error:', error)
     res.status(401).json({ error: 'Authentication failed' })
   }
 }
@@ -228,7 +242,7 @@ export const hasPermission = (userProfile, permission) => {
   }
 
   const userPermissions = rolePermissions[userProfile?.role] || []
-  
+
   return userPermissions.includes('*') || userPermissions.includes(permission)
 }
 
@@ -236,9 +250,9 @@ export const hasPermission = (userProfile, permission) => {
 export const requirePermission = (permission) => {
   return (req, res, next) => {
     if (!hasPermission(req.userProfile, permission)) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Insufficient permissions',
-        required: permission 
+        required: permission
       })
     }
     next()

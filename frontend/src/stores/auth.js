@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.user,
-    isSeller: (state) => state.profile?.role === 'seller' || state.profile?.role === 'admin', 
+    isSeller: (state) => state.profile?.role === 'seller' || state.profile?.role === 'admin',
     isApproved: (state) => (state.profile?.role === 'seller' && state.profile?.approved) || state.profile?.role === 'admin',
     isAdmin: (state) => state.profile?.role === 'admin'
   },
@@ -51,9 +51,35 @@ export const useAuthStore = defineStore('auth', {
         })
         if (error) throw error
 
+        // With database trigger, profile creation is automatic
+        if (data.user && (data.user.email_confirmed_at || data.session)) {
+          // User is immediately confirmed and logged in
+          this.user = data.user
+          await this.fetchProfile()
+        }
+        // If user needs email confirmation, profile will be created by trigger
+        // and user will be logged in when they click the confirmation link
 
         return data
       } catch (error) {
+        throw error
+      }
+    },
+
+    // Add method to create profile after email confirmation
+    async createProfileAfterConfirmation(user) {
+      try {
+        await api.post('/auth/create-profile', {
+          user_id: user.id,
+          email: user.email,
+          display_name: user.user_metadata?.display_name || user.email.split('@')[0],
+          role: user.user_metadata?.role || 'buyer'
+        })
+
+        this.user = user
+        await this.fetchProfile()
+      } catch (error) {
+        console.error('Profile creation after confirmation error:', error)
         throw error
       }
     },
