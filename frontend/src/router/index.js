@@ -38,7 +38,7 @@ const routes = [
     path: '/wishlist',
     name: 'Wishlist',
     component: () => import('@/views/Wishlist.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       preloadWishlist: true // New flag for wishlist preloading
     }
@@ -90,14 +90,23 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-  path: '/checkout',
-  name: 'Checkout',
-  component: () => import('@/views/Checkout.vue'),
-  meta: { 
-    requiresAuth: true,
-    title: 'Checkout - MTG Marketplace' 
+    path: '/checkout',
+    name: 'Checkout',
+    component: () => import('@/views/Checkout.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Checkout - MTG Marketplace'
+    }
+  },
+  {
+    path: '/orders/:id',
+    name: 'OrderConfirmation',
+    component: () => import('@/views/OrderConfirmation.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Order Confirmation - MTG Marketplace'
+    }
   }
-}
 ]
 
 const router = createRouter({
@@ -123,7 +132,7 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-    if (to.meta.preloadWishlist && authStore.isAuthenticated) {
+  if (to.meta.preloadWishlist && authStore.isAuthenticated) {
     const wishlistStore = useWishlistStore()
     if (!wishlistStore.initialized) {
       try {

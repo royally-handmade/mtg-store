@@ -5,13 +5,13 @@
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
           <h1 class="text-2xl font-bold text-gray-900">Checkout</h1>
-          <p class="text-gray-600 mt-1">Complete your purchase securely</p>
+          <p class="text-gray-600 mt-1">Complete your purchase securely with HelcimPay</p>
         </div>
 
         <div class="flex flex-col lg:flex-row">
           <!-- Main Checkout Form -->
           <div class="flex-1 px-6 py-6">
-            <form @submit.prevent="processOrder" class="space-y-8">
+            <div class="space-y-8">
               
               <!-- Step 1: Shipping Address -->
               <div class="space-y-4">
@@ -105,7 +105,6 @@
                       <option value="US">United States</option>
                       <option value="GB">United Kingdom</option>
                       <option value="AU">Australia</option>
-                      <!-- Add more countries as needed -->
                     </select>
                   </div>
 
@@ -232,95 +231,11 @@
                 </div>
               </div>
 
-              <!-- Step 3: Payment Information -->
+              <!-- Step 3: Order Review -->
               <div class="space-y-4">
                 <div class="flex items-center mb-4">
                   <span class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-600 text-white text-sm font-medium mr-3">3</span>
-                  <h2 class="text-xl font-semibold text-gray-900">Payment Information</h2>
-                </div>
-
-                <div class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
-                  <div class="flex">
-                    <div class="flex-shrink-0">
-                      <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                      </svg>
-                    </div>
-                    <div class="ml-3">
-                      <h3 class="text-sm font-medium text-blue-800">Secure Payment</h3>
-                      <div class="mt-2 text-sm text-blue-700">
-                        <p>Your payment is processed securely through Helcim. We accept Visa, Mastercard, American Express, and Discover.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="space-y-4">
-                  <div>
-                    <label for="card-number" class="block text-sm font-medium text-gray-700">Card Number *</label>
-                    <input
-                      id="card-number"
-                      v-model="paymentInfo.cardNumber"
-                      @input="formatCardNumber"
-                      type="text"
-                      required
-                      maxlength="19"
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="1234 5678 9012 3456"
-                    />
-                    <div v-if="cardType" class="mt-1 text-sm text-gray-500">
-                      {{ cardType }} detected
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label for="expiry" class="block text-sm font-medium text-gray-700">Expiry Date *</label>
-                      <input
-                        id="expiry"
-                        v-model="paymentInfo.expiryDate"
-                        @input="formatExpiryDate"
-                        type="text"
-                        required
-                        maxlength="5"
-                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="MM/YY"
-                      />
-                    </div>
-
-                    <div>
-                      <label for="cvc" class="block text-sm font-medium text-gray-700">CVC *</label>
-                      <input
-                        id="cvc"
-                        v-model="paymentInfo.cvc"
-                        type="text"
-                        required
-                        maxlength="4"
-                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="123"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label for="cardholder-name" class="block text-sm font-medium text-gray-700">Cardholder Name *</label>
-                    <input
-                      id="cardholder-name"
-                      v-model="paymentInfo.cardholderName"
-                      type="text"
-                      required
-                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Step 4: Order Confirmation -->
-              <div class="space-y-4">
-                <div class="flex items-center mb-4">
-                  <span class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-600 text-white text-sm font-medium mr-3">4</span>
-                  <h2 class="text-xl font-semibold text-gray-900">Review & Confirm</h2>
+                  <h2 class="text-xl font-semibold text-gray-900">Review Your Order</h2>
                 </div>
 
                 <div class="bg-gray-50 border border-gray-200 rounded-md p-4">
@@ -381,24 +296,58 @@
                 </div>
               </div>
 
-              <!-- Submit Button -->
-              <div class="pt-6 border-t border-gray-200">
-                <button
-                  type="submit"
-                  :disabled="processing || !agreedToTerms"
-                  class="w-full bg-green-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                >
-                  <span v-if="processing" class="flex items-center">
-                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing Order...
-                  </span>
-                  <span v-else>Complete Order - ${{ totalAmount.toFixed(2) }} CAD</span>
-                </button>
+              <!-- Step 4: Secure Payment with HelcimPay -->
+              <div class="space-y-4">
+                <div class="flex items-center mb-4">
+                  <span class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-600 text-white text-sm font-medium mr-3">4</span>
+                  <h2 class="text-xl font-semibold text-gray-900">Secure Payment</h2>
+                </div>
+
+                <div class="bg-green-50 border border-green-200 rounded-md p-4 mb-4">
+                  <div class="flex">
+                    <div class="flex-shrink-0">
+                      <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                    <div class="ml-3">
+                      <h3 class="text-sm font-medium text-green-800">PCI-Compliant Secure Payment</h3>
+                      <div class="mt-2 text-sm text-green-700">
+                        <p>Your payment is processed securely through HelcimPay. Your credit card information never touches our servers, ensuring maximum security and PCI compliance.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Payment Button -->
+                <div class="pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    @click="processSecurePayment"
+                    :disabled="!canProceedToPayment || processing"
+                    class="w-full bg-green-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  >
+                    <span v-if="processing" class="flex items-center">
+                      <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Setting up secure payment...
+                    </span>
+                    <span v-else>
+                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      Pay Securely with HelcimPay - ${{ totalAmount.toFixed(2) }} CAD
+                    </span>
+                  </button>
+                  
+                  <p class="text-xs text-gray-500 text-center mt-2">
+                    🔒 Secured by SSL encryption and HelcimPay tokenization
+                  </p>
+                </div>
               </div>
-            </form>
+            </div>
           </div>
 
           <!-- Order Summary Sidebar -->
@@ -463,8 +412,22 @@
             <!-- Security badges -->
             <div class="mt-6 pt-6 border-t border-gray-200">
               <div class="text-center">
-                <p class="text-xs text-gray-500 mb-2">Secured by</p>
-                <div class="text-xs text-gray-600 font-medium">🔒 Helcim SSL Encryption</div>
+                <p class="text-xs text-gray-500 mb-2">Payment Security</p>
+                <div class="flex items-center justify-center space-x-2 text-xs text-gray-600">
+                  <div class="flex items-center">
+                    <svg class="h-4 w-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                    </svg>
+                    SSL Secure
+                  </div>
+                  <div class="flex items-center">
+                    <svg class="h-4 w-4 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    PCI Compliant
+                  </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Powered by HelcimPay</p>
               </div>
             </div>
           </div>
@@ -481,7 +444,7 @@
           </div>
           <div class="ml-3">
             <h3 class="text-sm font-medium text-red-800">
-              Payment Error
+              Checkout Error
             </h3>
             <div class="mt-2 text-sm text-red-700">
               {{ errorMessage }}
@@ -514,7 +477,7 @@ const shippingAddress = reactive({
   city: '',
   province: '',
   postalCode: '',
-  country: 'CAN',
+  country: 'CA',
   phone: ''
 })
 
@@ -525,14 +488,7 @@ const billingAddress = reactive({
   city: '',
   province: '',
   postalCode: '',
-  country: 'CAN'
-})
-
-const paymentInfo = reactive({
-  cardNumber: '',
-  expiryDate: '',
-  cvc: '',
-  cardholderName: ''
+  country: 'CA'
 })
 
 // State
@@ -542,16 +498,7 @@ const processing = ref(false)
 const errorMessage = ref('')
 const shippingCost = ref(null)
 const shippingDetails = ref([]) // Store detailed shipping info
-
-// Card type detection
-const cardType = computed(() => {
-  const number = paymentInfo.cardNumber.replace(/\s/g, '')
-  if (/^4/.test(number)) return 'Visa'
-  if (/^5[1-5]/.test(number)) return 'Mastercard'
-  if (/^3[47]/.test(number)) return 'American Express'
-  if (/^6011|^65/.test(number)) return 'Discover'
-  return null
-})
+const helcimPayCheckoutToken = ref(null)
 
 // Calculate tax amount (13% HST for Canada, adjust as needed)
 const taxAmount = computed(() => {
@@ -572,6 +519,21 @@ const totalAmount = computed(() => {
   return subtotal + shipping + tax
 })
 
+// Check if can proceed to payment
+const canProceedToPayment = computed(() => {
+  return (
+    shippingAddress.name &&
+    shippingAddress.street1 &&
+    shippingAddress.city &&
+    shippingAddress.province &&
+    shippingAddress.postalCode &&
+    shippingAddress.country &&
+    agreedToTerms.value &&
+    shippingCost.value !== null &&
+    !processing.value
+  )
+})
+
 // Helper functions
 const getConditionLabel = (condition) => {
   const labels = {
@@ -582,20 +544,6 @@ const getConditionLabel = (condition) => {
     damaged: 'Damaged'
   }
   return labels[condition] || condition.replace('_', ' ').toUpperCase()
-}
-
-const formatCardNumber = () => {
-  let value = paymentInfo.cardNumber.replace(/\s/g, '')
-  value = value.replace(/(.{4})/g, '$1 ')
-  paymentInfo.cardNumber = value.trim()
-}
-
-const formatExpiryDate = () => {
-  let value = paymentInfo.expiryDate.replace(/\D/g, '')
-  if (value.length >= 2) {
-    value = value.substring(0, 2) + '/' + value.substring(2, 4)
-  }
-  paymentInfo.expiryDate = value
 }
 
 const toggleSameAsShipping = () => {
@@ -632,22 +580,21 @@ const calculateShipping = async () => {
           city: shippingAddress.city,
           province: shippingAddress.province,
           postalCode: shippingAddress.postalCode,
-          country: 'CAN',//shippingAddress.country, //TODO: Convert to iso-code-3 from country
+          country: shippingAddress.country,
           phone: shippingAddress.phone
         }
     })
     
     if (response.ok) {
-      const data = await response.json()
+      const data = await response.data
       if (data.success) {
         shippingCost.value = parseFloat(data.totalCost)
-        // Store shipping details for order creation
         shippingDetails.value = data.shipments
       } else {
         throw new Error(data.error || 'Shipping calculation failed')
       }
     } else {
-      const errorData = await response.json()
+      const errorData = await response.error
       throw new Error(errorData.error || 'Shipping calculation failed')
     }
   } catch (error) {
@@ -659,43 +606,143 @@ const calculateShipping = async () => {
   }
 }
 
-const processPaymentAndCreateOrder = async () => {
+// Initialize HelcimPay checkout session
+const initializeHelcimPaySession = async () => {
   try {
-    // First, create payment intent without creating order
-    const intentResponse = await api.post('/payment/create-intent', {
+    const response = await api.post('/payment/helcim/initialize', {
+        paymentType: 'purchase',
+        amount: totalAmount.value,
+        currency: 'CAD',
         items: cartStore.items.map(item => ({
           listing_id: item.listings?.id || item.id,
           quantity: item.quantity,
+          name: item.listings?.cards?.name,
           price: item.listings?.price
         })),
-        amount: totalAmount.value,
-        currency: 'CAD',
+        shipping_address: shippingAddress,
         billing_address: sameAsShipping.value ? shippingAddress : billingAddress,
+        subtotal: parseFloat(cartStore.summary.subtotal),
         shipping_cost: shippingCost.value,
         tax_amount: taxAmount.value,
-        subtotal: parseFloat(cartStore.summary.subtotal),
-                card_number: paymentInfo.cardNumber.replace(/\s/g, ''),
-        card_expiry: paymentInfo.expiryDate,
-        card_cvv: paymentInfo.cvc,
-        cardholder_name: paymentInfo.cardholderName,
+        customer: {
+          email: authStore.user?.email,
+          name: shippingAddress.name
+        }
     })
     
-    if (!intentResponse.ok) {
-      const error = await intentResponse.json()
-      throw new Error(error.error || 'Failed to create payment intent')
+    if (response.status != 200) {
+      const error = await response
+      throw new Error(error.error || 'Failed to initialize payment session')
     }
     
-    const intentData = await intentResponse.json()
+    const data = await response.data
+    return data.checkoutToken
+  } catch (error) {
+    console.error('Error initializing HelcimPay session:', error)
+    throw error
+  }
+}
+
+// Load HelcimPay.js script if not already loaded
+const loadHelcimPayScript = () => {
+  return new Promise((resolve, reject) => {
+    // Check if already loaded
+    if (window.appendHelcimPayIframe) {
+      resolve()
+      return
+    }
     
-    // Process payment with card details
-    const paymentResponse = await api.post('/order/process-and-create-order', {
-        payment_intent_id: intentData.payment_intent.paymentIntentId,
-        card_number: paymentInfo.cardNumber.replace(/\s/g, ''),
-        expiry_month: paymentInfo.expiryDate.split('/')[0],
-        expiry_year: '20' + paymentInfo.expiryDate.split('/')[1],
-        cvc: paymentInfo.cvc,
-        cardholder_name: paymentInfo.cardholderName,
-        // Order data to create only after successful payment
+    const script = document.createElement('script')
+    script.src = 'https://secure.helcim.app/helcim-pay/services/start.js'
+    script.type = 'text/javascript'
+    script.onload = () => {
+      console.log('HelcimPay.js script loaded successfully')
+      resolve()
+    }
+    script.onerror = (error) => {
+      console.error('Failed to load HelcimPay.js script:', error)
+      reject(new Error('Failed to load HelcimPay.js script'))
+    }
+    document.head.appendChild(script)
+  })
+}
+
+// Process secure payment with HelcimPay
+const processSecurePayment = async () => {
+  if (!canProceedToPayment.value) {
+    errorMessage.value = 'Please complete all required fields before proceeding.'
+    return
+  }
+  
+  processing.value = true
+  errorMessage.value = ''
+  
+  try {
+    // Load HelcimPay.js script
+    await loadHelcimPayScript()
+    
+    // Initialize HelcimPay session
+    const checkoutToken = await initializeHelcimPaySession()
+    helcimPayCheckoutToken.value = checkoutToken
+    
+    // Set up payment response listener with proper event handling
+    const handlePaymentResponse = (event) => {
+      const helcimPayJsIdentifierKey = 'helcim-pay-js-' + checkoutToken
+      
+      if (event.data.eventName === helcimPayJsIdentifierKey) {
+        // Remove event listener first
+        window.removeEventListener('message', handlePaymentResponse)
+        
+        if (event.data.eventStatus === 'SUCCESS') {
+          console.log('Payment successful:', event.data.eventMessage)
+          handleSuccessfulPayment(event.data.eventMessage)
+        } else if (event.data.eventStatus === 'ABORTED') {
+          console.error('Payment failed:', event.data)
+          handlePaymentError(event.data.eventMessage)
+        } else if (event.data.eventStatus === 'HIDE') {
+          console.log('Payment modal closed')
+          // Modal was closed without completion
+          processing.value = false
+        }
+      }
+    }
+    
+    // Add event listener
+    window.addEventListener('message', handlePaymentResponse)
+    
+    // Show HelcimPay modal using the correct function name and parameters
+    window.appendHelcimPayIframe(checkoutToken, true) // allowExit = true
+    
+  } catch (error) {
+    console.error('Payment initialization error:', error)
+    errorMessage.value = error.message || 'Failed to initialize secure payment. Please try again.'
+    processing.value = false
+  }
+}
+
+// Handle successful payment from HelcimPay
+const handleSuccessfulPayment = async (eventMessage) => {
+  try {
+    // Remove HelcimPay iframe if still present
+    if (window.removeHelcimPayIframe) {
+      window.removeHelcimPayIframe()
+    }
+    
+    // Parse the event message (it comes as JSON string)
+    let paymentResponse
+    try {
+      paymentResponse = typeof eventMessage === 'string' 
+        ? JSON.parse(eventMessage) 
+        : eventMessage
+    } catch (parseError) {
+      console.error('Failed to parse payment response:', parseError)
+      throw new Error('Invalid payment response format')
+    }
+    
+    // Process the successful payment and create order
+    const response = await api.post('/payment/helcim/complete-order', {
+        checkoutToken: helcimPayCheckoutToken.value,
+        paymentResponse: paymentResponse,
         order_data: {
           items: cartStore.items.map(item => ({
             listing_id: item.listings?.id || item.id,
@@ -710,113 +757,58 @@ const processPaymentAndCreateOrder = async () => {
           shipping_details: shippingDetails.value
         }
     })
-    
-    if (!paymentResponse.ok) {
-      const error = await paymentResponse.json()
 
-      //TODO: save customer id to users table to reference later.
-      //TODO: implement save card on file
-      throw new Error(error.error || 'Payment failed')
-    }
-    
-    const result = await paymentResponse.json()
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Payment failed')
-    }
-    
-    return result
-  } catch (error) {
-    console.error('Error processing payment and creating order:', error)
-    throw error
-  }
-}
 
-const processOrder = async () => {
-  processing.value = true
-  errorMessage.value = ''
-  
-  try {
-    // Validate form data
-    if (!validateForm()) {
-      return
+    if (response.status != 200) {
+      const error = await response
+      throw new Error(error.error || 'Failed to complete order')
     }
     
-    // Process payment and create order atomically
-    const result = await processPaymentAndCreateOrder()
+    const result = await response.data
     
     if (result.success) {
-      // Clear cart only after successful payment and order creation
+      // Clear cart
       await cartStore.clearCart()
       
       // Show success message
       toast.success('Order placed successfully!')
       
       // Redirect to order confirmation
-      router.push(`/orders/${result.order.id}`)
+      router.push(`/orders/${result.order.id}?new=true`)
     } else {
-      throw new Error(result.error || 'Order processing failed')
+      throw new Error(result.error || 'Order completion failed')
     }
+    
   } catch (error) {
-    console.error('Order processing error:', error)
-    errorMessage.value = error.message || 'An error occurred while processing your order. Please try again.'
+    console.error('Order completion error:', error)
+    errorMessage.value = error.message || 'Failed to complete your order. Please contact support with your transaction details.'
   } finally {
     processing.value = false
   }
 }
 
-const validateForm = () => {
-  // Reset error
-  errorMessage.value = ''
+// Handle payment error from HelcimPay
+const handlePaymentError = (errorData) => {
+  console.error('HelcimPay payment error:', errorData)
   
-  // Check required shipping fields
-  const requiredShippingFields = ['name', 'street1', 'city', 'province', 'postalCode', 'country']
-  for (const field of requiredShippingFields) {
-    if (!shippingAddress[field]) {
-      errorMessage.value = `Please fill in all required shipping address fields.`
-      return false
-    }
+  // Remove iframe if still present
+  if (window.removeHelcimPayIframe) {
+    window.removeHelcimPayIframe()
   }
   
-  // Check billing fields if different from shipping
-  if (!sameAsShipping.value) {
-    const requiredBillingFields = ['name', 'street1', 'city', 'province', 'postalCode', 'country']
-    for (const field of requiredBillingFields) {
-      if (!billingAddress[field]) {
-        errorMessage.value = `Please fill in all required billing address fields.`
-        return false
-      }
-    }
+  // Extract error message
+  let errorMsg = 'Payment failed. Please try again.'
+  
+  if (typeof errorData === 'string') {
+    errorMsg = errorData
+  } else if (errorData && errorData.error) {
+    errorMsg = errorData.error
+  } else if (errorData && errorData.message) {
+    errorMsg = errorData.message
   }
   
-  // Validate payment information
-  if (!paymentInfo.cardNumber || paymentInfo.cardNumber.replace(/\s/g, '').length < 13) {
-    errorMessage.value = 'Please enter a valid card number.'
-    return false
-  }
-  
-  if (!paymentInfo.expiryDate || !paymentInfo.expiryDate.match(/^\d{2}\/\d{2}$/)) {
-    errorMessage.value = 'Please enter a valid expiry date (MM/YY).'
-    return false
-  }
-  
-  if (!paymentInfo.cvc || paymentInfo.cvc.length < 3) {
-    errorMessage.value = 'Please enter a valid CVC code.'
-    return false
-  }
-  
-  if (!paymentInfo.cardholderName) {
-    errorMessage.value = 'Please enter the cardholder name.'
-    return false
-  }
-  
-  // Check terms agreement
-  if (!agreedToTerms.value) {
-    errorMessage.value = 'Please agree to the terms of service and privacy policy.'
-    return false
-  }
-  
-  return true
+  errorMessage.value = errorMsg
+  processing.value = false
 }
 
 // Watch for changes to shipping address to recalculate shipping
@@ -857,11 +849,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Additional styles for form validation */
-.error-border {
-  @apply border-red-300 focus:border-red-500 focus:ring-red-500;
-}
-
 /* Loading animation */
 @keyframes spin {
   to {
@@ -873,7 +860,7 @@ onMounted(async () => {
   animation: spin 1s linear infinite;
 }
 
-/* Card input styling */
+/* Form styling improvements */
 input[type="text"]:focus,
 input[type="tel"]:focus,
 select:focus {
@@ -885,5 +872,10 @@ select:focus {
   .min-h-screen {
     min-height: 100vh;
   }
+}
+
+/* HelcimPay iframe styling */
+:global(.helcim-pay-iframe) {
+  z-index: 9999;
 }
 </style>

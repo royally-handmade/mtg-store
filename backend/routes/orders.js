@@ -679,5 +679,261 @@ router.post('/create-intent', [
   }
 })
 
+router.get('/:orderId', authenticateUser, async (req, res) => {
+  try {
+    const { orderId } = req.params
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(orderId)) {
+      return res.status(400).json({ error: 'Invalid order ID format' })
+    }
+
+    // Fetch order with all related data
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          *,
+          listings (
+            *,
+            cards (
+              id,
+              name,
+              set_name,
+              image_url,
+              rarity
+            ),
+            profiles:seller_id (
+              id,
+              display_name,
+              rating
+            )
+          )
+        )
+      `)
+      .eq('id', orderId)
+      .eq('buyer_id', req.user.id) // Ensure user can only see their own orders
+      .single()
+      
+      console.log(order)
+
+    if (orderError) {
+      console.error('Order fetch error:', orderError)
+      if (orderError.code === 'PGRST116') { // No rows returned
+        return res.status(404).json({ error: 'Order not found' })
+      }
+      return res.status(500).json({ error: 'Failed to fetch order details' })
+    }
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' })
+    }
+
+    // Transform the order data for frontend consumption
+    const transformedOrder = {
+      id: order.id,
+      number: order.order_number,
+      status: order.status,
+      payment_status: order.payment_status,
+      subtotal: parseFloat(order.subtotal || 0),
+      shipping_cost: parseFloat(order.shipping_cost || 0),
+      tax_amount: parseFloat(order.tax_amount || 0),
+      total_amount: parseFloat(order.total_amount || 0),
+      currency: order.currency,
+      shipping_address: order.shipping_address,
+      billing_address: order.billing_address,
+      payment_method: order.payment_method,
+      card_last_four: order.card_last_four,
+      helcim_transaction_id: order.helcim_transaction_id,
+      tracking_number: order.tracking_number,
+      created_at: order.created_at,
+      updated_at: order.updated_at,
+      paid_at: order.paid_at,
+      shipped_at: order.shipped_at,
+      delivered_at: order.delivered_at,
+      notes: order.notes,
+      requires_manual_review: order.requires_manual_review,
+
+      // Transform order items with full details
+      order_items: (order.order_items || []).map(item => ({
+        id: item.id,
+        quantity: item.quantity,
+        price_at_time: parseFloat(item.price_at_time || 0),
+        created_at: item.created_at,
+        listings: item.listings ? {
+          id: item.listings.id,
+          condition: item.listings.condition,
+          language: item.listings.language,
+          foil: item.listings.foil,
+          signed: item.listings.signed,
+          cards: item.listings.cards ? {
+            id: item.listings.cards.id,
+            name: item.listings.cards.name,
+            set_name: item.listings.cards.set_name,
+            image_url: item.listings.cards.image_url,
+            rarity: item.listings.cards.rarity
+          } : null,
+          profiles: item.listings.profiles ? {
+            id: item.listings.profiles.id,
+            display_name: item.listings.profiles.display_name,
+            rating: item.listings.profiles.rating
+          } : null
+        } : null
+      }))
+    }
+
+    res.json({
+      success: true,
+      order: transformedOrder
+    })
+
+  } catch (error) {
+    console.error('Error fetching single order:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Alternative endpoint for admin access (can view any order)
+router.get('/admin/:orderId', authenticateUser, requireAdmin, async (req, res) => {
+  try {
+    const { orderId } = req.params
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(orderId)) {
+      return res.status(400).json({ error: 'Invalid order ID format' })
+    }
+
+    // Fetch order with buyer information (admin can see any order)
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        buyer:buyer_id (
+          id,
+          display_name,
+          email,
+          created_at
+        ),
+        order_items (
+          *,
+          listings (
+            *,
+            cards (
+              id,
+              name,
+              set_name,
+              image_url,
+              rarity
+            ),
+            profiles:seller_id (
+              id,
+              display_name,
+              rating
+            )
+          )
+        )
+      `)
+      .eq('id', orderId)
+      .single()
+
+    if (orderError) {
+      console.error('Admin order fetch error:', orderError)
+      if (orderError.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Order not found' })
+      }
+      return res.status(500).json({ error: 'Failed to fetch order details' })
+    }
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' })
+    }
+
+    // Transform order data (similar to user endpoint but includes buyer info)
+    const transformedOrder = {
+      id: order.id,
+      status: order.status,
+      payment_status: order.payment_status,
+      subtotal: parseFloat(order.subtotal || 0),
+      shipping_cost: parseFloat(order.shipping_cost || 0),
+      tax_amount: parseFloat(order.tax_amount || 0),
+      total_amount: parseFloat(order.total_amount || 0),
+      currency: order.currency,
+      shipping_address: order.shipping_address,
+      billing_address: order.billing_address,
+      payment_method: order.payment_method,
+      card_last_four: order.card_last_four,
+      helcim_transaction_id: order.helcim_transaction_id,
+      tracking_number: order.tracking_number,
+      created_at: order.created_at,
+      updated_at: order.updated_at,
+      paid_at: order.paid_at,
+      shipped_at: order.shipped_at,
+      delivered_at: order.delivered_at,
+      notes: order.notes,
+      requires_manual_review: order.requires_manual_review,
+
+      // Include buyer information for admin
+      buyer: order.buyer ? {
+        id: order.buyer.id,
+        display_name: order.buyer.display_name,
+        email: order.buyer.email,
+        created_at: order.buyer.created_at
+      } : null,
+
+      // Transform order items
+      order_items: (order.order_items || []).map(item => ({
+        id: item.id,
+        quantity: item.quantity,
+        price_at_time: parseFloat(item.price_at_time || 0),
+        seller_id: item.seller_id,
+        created_at: item.created_at,
+        listings: item.listings ? {
+          id: item.listings.id,
+          condition: item.listings.condition,
+          language: item.listings.language,
+          foil: item.listings.foil,
+          signed: item.listings.signed,
+          price: item.listings.price,
+          cards: item.listings.cards ? {
+            id: item.listings.cards.id,
+            name: item.listings.cards.name,
+            set_name: item.listings.cards.set_name,
+            image_url: item.listings.cards.image_url,
+            rarity: item.listings.cards.rarity
+          } : null,
+          profiles: item.listings.profiles ? {
+            id: item.listings.profiles.id,
+            display_name: item.listings.profiles.display_name,
+            rating: item.listings.profiles.rating
+          } : null
+        } : null
+      }))
+    }
+
+    res.json({
+      success: true,
+      order: transformedOrder
+    })
+
+  } catch (error) {
+    console.error('Error fetching admin order:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Middleware function for admin requirement
+function requireAdmin(req, res, next) {
+  // This should be implemented based on your auth system
+  // Example implementation:
+  if (req.user && req.user.role === 'admin') {
+    next()
+  } else {
+    res.status(403).json({ error: 'Admin access required' })
+  }
+}
+
 
 export default router

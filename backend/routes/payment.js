@@ -6,220 +6,288 @@ import helcimService from '../services/helcimService.js'
 import sellerPayoutService from '../services/sellerPayoutService.js'
 import { authenticateUser } from '../middleware/auth.js'
 import { body, validationResult } from 'express-validator'
+import crypto from 'crypto'
+import helcimPayRoutes from './payment/helcim.js'
 
 const router = express.Router()
 
-// ===== PAYMENT PROCESSING =====
+router.use('/helcim', helcimPayRoutes)
 
-// Create payment intent
-router.post('/create-intent', authenticateUser, [
-  body('amount').isFloat({ min: 0.01 }).withMessage('Valid amount required'),
-  body('currency').optional().isIn(['CAD', 'USD']).withMessage('Currency must be CAD or USD'),
-  body('items').isArray({ min: 1 }).withMessage('Items required for intent creation')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: 'Validation failed', details: errors.array() })
+router.post('/create-intent', authenticateUser, (req, res) => {
+  res.status(410).json({
+    error: 'This payment method has been deprecated for security reasons.',
+    message: 'Please use the new HelcimPay.js integration at /api/payment/helcim/initialize',
+    migration: {
+      newEndpoint: '/api/payment/helcim/initialize',
+      documentation: 'https://devdocs.helcim.com/docs/overview-of-helcimpayjs'
     }
-
-    const { 
-      amount, 
-      currency = 'CAD', 
-      billing_address, 
-      items,
-      subtotal,
-      shipping_cost,
-      tax_amount,
-      card_number,
-      card_expiry,
-      card_cvv
-    } = req.body
-
-    // Generate a temporary order ID for the payment intent
-    const tempOrderId = `temp_${Date.now()}_${req.user.id}`
-
-    // Create description from items
-    const itemNames = items.slice(0, 3).map(item => `Item ${item.listing_id}`)
-    const description = `MTG Cards: ${itemNames.join(', ')}${items.length > 3 ? ` +${items.length - 3} more` : ''}`
-
-    // Create payment intent with Helcim
-    const paymentIntent = await helcimService.createPaymentIntent({
-      ip_address: req.ip,
-      amount: amount,
-      currency: currency,
-      orderId: tempOrderId,
-      buyerId: req.user.id,
-      description: description,
-      billingAddress: billing_address,
-      card_number: card_number,
-      card_expiry: card_expiry,
-      card_cvv: card_cvv
-    })
-
-    res.json({
-      success: true,
-      payment_intent: paymentIntent,
-      summary: {
-        subtotal,
-        shipping_cost,
-        tax_amount,
-        total_amount: amount,
-        currency
-      }
-    })
-  } catch (error) {
-    console.error('Payment intent creation failed:', error)
-    res.status(500).json({ error: error.message })
-  }
+  })
 })
 
-// Confirm payment
-router.post('/confirm', [
-  body('payment_intent_id').notEmpty().withMessage('Payment intent ID required'),
-  body('order_id').isUUID().withMessage('Valid order ID required')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: 'Validation failed', details: errors.array() })
+router.post('/process-and-create-order', authenticateUser, (req, res) => {
+  res.status(410).json({
+    error: 'This payment method has been deprecated for security reasons.',
+    message: 'Please use the new HelcimPay.js integration at /api/payment/helcim/complete-order',
+    migration: {
+      newEndpoint: '/api/payment/helcim/complete-order',
+      documentation: 'https://devdocs.helcim.com/docs/overview-of-helcimpayjs'
     }
-
-    const { payment_intent_id, order_id } = req.body
-
-    // Verify order exists and is pending
-    const { data: order } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', order_id)
-      .eq('payment_intent_id', payment_intent_id)
-      .single()
-
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found or payment intent mismatch' })
-    }
-
-    // Capture the payment with Helcim
-    const captureResult = await helcimService.capturePayment(payment_intent_id, order.total_amount)
-
-    if (captureResult.success) {
-      // Update order status
-      await supabase
-        .from('orders')
-        .update({
-          status: 'processing',
-          payment_status: 'completed',
-          helcim_transaction_id: captureResult.transactionId,
-          paid_at: new Date(),
-          updated_at: new Date()
-        })
-        .eq('id', order_id)
-
-      // Update listing quantities
-      const { data: orderItems } = await supabase
-        .from('order_items')
-        .select('listing_id, quantity')
-        .eq('order_id', order_id)
-
-      for (const item of orderItems) {
-        await supabase.rpc('decrement_listing_quantity', {
-          listing_id: item.listing_id,
-          quantity_to_subtract: item.quantity
-        })
-      }
-
-      res.json({
-        success: true,
-        transaction_id: captureResult.transactionId,
-        message: 'Payment confirmed successfully'
-      })
-    } else {
-      res.status(400).json({ error: 'Payment confirmation failed' })
-    }
-  } catch (error) {
-    console.error('Payment confirmation failed:', error)
-    res.status(500).json({ error: error.message })
-  }
+  })
 })
 
-// Process refund
-router.post('/refund', authenticateUser, [
-  body('order_id').isUUID().withMessage('Valid order ID required'),
-  body('amount').isFloat({ min: 0.01 }).withMessage('Valid refund amount required'),
-  body('reason').optional().isString().withMessage('Reason must be a string')
-], async (req, res) => {
+// ===== PAYMENT STATUS AND MANAGEMENT =====
+
+// Get payment status for an order
+router.get('/status/:orderId', authenticateUser, async (req, res) => {
   try {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: 'Validation failed', details: errors.array() })
-    }
+    const { orderId } = req.params
 
-    const { order_id, amount, reason = 'Customer request' } = req.body
-
-    // Check if user is admin or the buyer
-    const { data: order } = await supabase
+    const { data: order, error } = await supabase
       .from('orders')
       .select(`
-        *,
-        profiles!buyer_id(role)
+        id,
+        status,
+        payment_status,
+        total_amount,
+        currency,
+        helcim_transaction_id,
+        helcim_checkout_token,
+        payment_method,
+        card_last_four,
+        paid_at,
+        created_at
       `)
-      .eq('id', order_id)
+      .eq('id', orderId)
+      .eq('buyer_id', req.user.id)
       .single()
 
-    if (!order) {
+    if (error || !order) {
       return res.status(404).json({ error: 'Order not found' })
     }
 
-    // Verify user has permission to refund
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', req.user.id)
+    res.json({
+      success: true,
+      order: {
+        id: order.id,
+        status: order.status,
+        paymentStatus: order.payment_status,
+        totalAmount: order.total_amount,
+        currency: order.currency,
+        paymentMethod: order.payment_method,
+        cardLastFour: order.card_last_four,
+        transactionId: order.helcim_transaction_id,
+        paidAt: order.paid_at,
+        createdAt: order.created_at
+      }
+    })
+
+  } catch (error) {
+    console.error('Payment status error:', error)
+    res.status(500).json({ error: 'Failed to fetch payment status' })
+  }
+})
+
+// Cancel a pending order (before payment)
+router.post('/cancel/:orderId', authenticateUser, async (req, res) => {
+  try {
+    const { orderId } = req.params
+
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, status, payment_status, helcim_checkout_token')
+      .eq('id', orderId)
+      .eq('buyer_id', req.user.id)
       .single()
 
-    const canRefund = userProfile.role === 'admin' || 
-                     (order.buyer_id === req.user.id && order.status === 'delivered')
-
-    if (!canRefund) {
-      return res.status(403).json({ error: 'Not authorized to process refund' })
+    if (fetchError || !order) {
+      return res.status(404).json({ error: 'Order not found' })
     }
 
-    if (!order.helcim_transaction_id) {
-      return res.status(400).json({ error: 'No payment transaction found for this order' })
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({ error: 'Cannot cancel paid order' })
     }
 
-    // Process refund with Helcim
-    const refundResult = await helcimService.processRefund(
-      order.helcim_transaction_id,
-      amount,
-      reason
-    )
+    // Update order status
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({
+        status: 'cancelled',
+        updated_at: new Date()
+      })
+      .eq('id', orderId)
 
-    if (refundResult.success) {
-      // Update order with refund information
+    if (updateError) {
+      return res.status(500).json({ error: 'Failed to cancel order' })
+    }
+
+    // Cancel checkout session if exists
+    if (order.helcim_checkout_token) {
       await supabase
-        .from('orders')
+        .from('checkout_sessions')
         .update({
-          refund_status: 'processing',
-          refund_amount: amount,
-          refund_reason: reason,
-          refund_initiated_at: new Date(),
+          status: 'cancelled',
           updated_at: new Date()
         })
-        .eq('id', order_id)
-
-      res.json({
-        success: true,
-        refund_id: refundResult.refundId,
-        amount: refundResult.amount,
-        message: 'Refund processed successfully'
-      })
-    } else {
-      res.status(400).json({ error: 'Refund processing failed' })
+        .eq('checkout_token', order.helcim_checkout_token)
     }
+
+    res.json({
+      success: true,
+      message: 'Order cancelled successfully'
+    })
+
   } catch (error) {
-    console.error('Refund processing failed:', error)
-    res.status(500).json({ error: error.message })
+    console.error('Order cancellation error:', error)
+    res.status(500).json({ error: 'Failed to cancel order' })
+  }
+})
+
+// ===== REFUND PROCESSING =====
+
+// Request refund for an order
+router.post('/refund/:orderId', authenticateUser, async (req, res) => {
+  try {
+    const { orderId } = req.params
+    const { reason, amount } = req.body
+
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('buyer_id', req.user.id)
+      .single()
+
+    if (fetchError || !order) {
+      return res.status(404).json({ error: 'Order not found' })
+    }
+
+    if (order.payment_status !== 'completed') {
+      return res.status(400).json({ error: 'Order has not been paid' })
+    }
+
+    if (order.status === 'refunded') {
+      return res.status(400).json({ error: 'Order has already been refunded' })
+    }
+
+    // Validate refund amount
+    const refundAmount = amount || order.total_amount
+    if (refundAmount > order.total_amount) {
+      return res.status(400).json({ error: 'Refund amount cannot exceed order total' })
+    }
+
+    // Create refund request (to be processed by admin)
+    const { data: refundRequest, error: refundError } = await supabase
+      .from('refund_requests')
+      .insert([{
+        order_id: orderId,
+        user_id: req.user.id,
+        amount: refundAmount,
+        reason: reason,
+        status: 'pending',
+        created_at: new Date()
+      }])
+      .select()
+      .single()
+
+    if (refundError) {
+      return res.status(500).json({ error: 'Failed to create refund request' })
+    }
+
+    res.json({
+      success: true,
+      message: 'Refund request submitted successfully',
+      refundRequest: {
+        id: refundRequest.id,
+        amount: refundRequest.amount,
+        status: refundRequest.status
+      }
+    })
+
+  } catch (error) {
+    console.error('Refund request error:', error)
+    res.status(500).json({ error: 'Failed to process refund request' })
+  }
+})
+
+// ===== PAYMENT HISTORY =====
+
+// Get user's payment history
+router.get('/history', authenticateUser, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status } = req.query
+
+    let query = supabase
+      .from('orders')
+      .select(`
+        id,
+        status,
+        payment_status,
+        total_amount,
+        currency,
+        payment_method,
+        card_last_four,
+        paid_at,
+        created_at,
+        order_items(
+          quantity,
+          price_at_time,
+          listings(
+            cards(name, image_url)
+          )
+        )
+      `, { count: 'exact' })
+      .eq('buyer_id', req.user.id)
+
+    if (status) {
+      query = query.eq('status', status)
+    }
+
+    const offset = (page - 1) * limit
+    const { data: orders, count, error } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) {
+      return res.status(500).json({ error: 'Failed to fetch payment history' })
+    }
+
+    res.json({
+      success: true,
+      orders: orders || [],
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit)
+      }
+    })
+
+  } catch (error) {
+    console.error('Payment history error:', error)
+    res.status(500).json({ error: 'Failed to fetch payment history' })
+  }
+})
+
+// ===== TOKENIZATION STATUS =====
+
+// Check if user has stored payment methods
+router.get('/stored-methods', authenticateUser, async (req, res) => {
+  try {
+    // This would integrate with Helcim's customer vault API
+    // For now, return basic info about stored payment methods
+    
+    // In a full implementation, you would call Helcim's API to get stored cards
+    // const storedCards = await helcimService.getCustomerCards(req.user.id)
+    
+    res.json({
+      success: true,
+      hasStoredMethods: false, // Would be determined by Helcim API response
+      message: 'Payment methods are securely stored by Helcim and tokenized for your protection'
+    })
+
+  } catch (error) {
+    console.error('Stored methods error:', error)
+    res.status(500).json({ error: 'Failed to fetch stored payment methods' })
   }
 })
 

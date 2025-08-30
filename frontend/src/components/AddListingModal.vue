@@ -14,11 +14,11 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Condition</label>
           <select v-model="form.condition" @change="onConditionChange" required class="input-field">
             <option value="">Select condition</option>
-            <option value="nm">Near Mint</option>
-            <option value="lp">Lightly Played</option>
-            <option value="mp">Moderately Played</option>
-            <option value="hp">Heavily Played</option>
-            <option value="dmg">Damaged</option>
+            <option value="near_mint">Near Mint</option>
+            <option value="lightly_played">Lightly Played</option>
+            <option value="moderately_played">Moderately Played</option>
+            <option value="heavily_played">Heavily Played</option>
+            <option value="damaged">Damaged</option>
           </select>
         </div>
 

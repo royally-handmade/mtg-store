@@ -193,91 +193,25 @@ const requireApprovedSeller = async (req, res, next) => {
 // ===== LISTING MANAGEMENT (Requires Approved Seller) =====
 
 // Create new listing
-router.post('/listings', requireApprovedSeller, upload.array('images', 10), async (req, res) => {
+router.post('/listings', requireApprovedSeller, async (req, res) => {
   try {
     const {
-      card_name,
-      set_name,
-      set_number,
-      card_number,
-      condition,
-      language = 'English',
-      foil = false,
-      signed = false,
-      altered = false,
-      quantity,
+      card_id,
       price,
-      description
+      condition,
+      quantity
     } = req.body
 
-    // Find or create card
-    let { data: card } = await supabase
-      .from('cards')
-      .select('*')
-      .eq('name', card_name)
-      .eq('set_name', set_name)
-      .eq('card_number', card_number)
-      .single()
-
-    if (!card) {
-      // Create new card if it doesn't exist
-      const { data: newCard, error: cardError } = await supabase
-        .from('cards')
-        .insert({
-          name: card_name,
-          set_name,
-          set_number,
-          card_number,
-          created_at: new Date()
-        })
-        .select()
-        .single()
-
-      if (cardError) throw cardError
-      card = newCard
-    }
-
-    // Process uploaded images
-    const imageUrls = []
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const processedBuffer = await sharp(file.buffer)
-          .resize(672, 936, { fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 90 })
-          .toBuffer()
-
-        const fileName = `listings/${req.user.id}/${Date.now()}-${file.originalname}`
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('card-images')
-          .upload(fileName, processedBuffer, {
-            contentType: 'image/jpeg'
-          })
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('card-images')
-          .getPublicUrl(fileName)
-
-        imageUrls.push(publicUrl)
-      }
-    }
 
     // Create listing
     const { data: listing, error: listingError } = await supabase
       .from('listings')
       .insert({
         seller_id: req.user.id,
-        card_id: card.id,
+        card_id: card_id,
         condition,
-        language,
-        foil: foil === 'true',
-        signed: signed === 'true',
-        altered: altered === 'true',
-        quantity: parseInt(quantity),
-        price: parseFloat(price),
-        description,
-        images: imageUrls,
+        price,
+        quantity,
         status: 'active',
         created_at: new Date()
       })
