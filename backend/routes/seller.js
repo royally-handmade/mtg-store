@@ -567,7 +567,7 @@ router.get('/orders', requireApprovedSeller, async (req, res) => {
           )
         )
       `, { count: 'exact' })
-      .eq('seller_id', req.user.id)
+      .eq('order_items.listings.seller_id', req.user.id)
 
     // Apply filters
     if (status !== 'all') {
@@ -692,13 +692,29 @@ router.get('/stats', requireApprovedSeller, async (req, res) => {
         .eq('status', 'active'),
       supabase
         .from('orders')
-        .select('*', { count: 'exact' })
-        .eq('seller_id', sellerId)
+        .select(`
+        *,
+        buyer:buyer_id(display_name, email),
+        order_items(
+          *,
+          listings(
+            *,
+            cards(name, set_name, card_number)
+          )
+        )
+      `, { count: 'exact' })
+        .eq('order_items.listings.seller_id', sellerId)
         .in('status', ['pending', 'processing']),
       supabase
         .from('orders')
-        .select('total_amount, subtotal, created_at')
-        .eq('seller_id', sellerId)
+        .select(`total_amount, subtotal, created_at,
+           order_items(
+          *,
+          listings(
+            *
+          )
+        )`)
+        .eq('order_items.listings.seller_id', sellerId)
         .eq('status', 'completed'),
       supabase
         .from('seller_reviews')
@@ -1339,52 +1355,5 @@ router.post('/sellers/:id/unsuspend', async (req, res) => {
     res.status(500).json({ error: error.message })
   }
 })
-
-// ===== PLATFORM STATISTICS =====
-
-// Get platform statistics
-router.get('/stats', async (req, res) => {
-  try {
-    const [usersRes, sellersRes, listingsRes, ordersRes, applicationsRes] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'seller').eq('approved', true),
-      supabase.from('listings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-      supabase.from('orders').select('total_amount').eq('status', 'completed'),
-      supabase.from('seller_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-    ])
-    
-    const totalRevenue = ordersRes.data?.reduce((sum, order) => {
-      return sum + (order.total_amount * 0.025) // 2.5% platform fee
-    }, 0) || 0
-    
-    // Get recent activity
-    const { data: recentOrders } = await supabase
-      .from('orders')
-      .select('created_at, total_amount')
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    const { data: recentListings } = await supabase
-      .from('listings')
-      .select('created_at, price, cards(name)')
-      .order('created_at', { ascending: false })
-      .limit(10)
-
-    res.json({
-      totalUsers: usersRes.count,
-      activeSellers: sellersRes.count,
-      totalListings: listingsRes.count,
-      pendingApplications: applicationsRes.count,
-      revenue: totalRevenue.toFixed(2),
-      recentActivity: {
-        orders: recentOrders,
-        listings: recentListings
-      }
-    })
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
 
 export default router

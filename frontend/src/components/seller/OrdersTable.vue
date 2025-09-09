@@ -24,7 +24,10 @@
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
-        <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-50">
+        <tr v-for="order in orders" 
+        :key="order.id"
+        @click="viewDetails(order)" 
+        class="hover:bg-gray-50">
           <td class="px-6 py-4 whitespace-nowrap">
             <div class="text-sm font-medium text-gray-900">
               #{{ order.id.slice(0, 8) }}
@@ -78,7 +81,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update-status'])
+const emit = defineEmits(['update-status','view-details'])
 
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString()
@@ -97,5 +100,9 @@ const getStatusColor = (status) => {
 
 const updateStatus = (orderId, newStatus) => {
   emit('update-status', orderId, newStatus)
+}
+
+const viewDetails = (order) => {
+  emit('view-details', order)
 }
 </script>

@@ -10,9 +10,7 @@
     <!-- Quick Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
       <StatCard title="Wishlist Items" :value="stats.wishlistCount" icon="heart" />
-      <StatCard title="Cart Items" :value="stats.cartCount" icon="shopping-cart" />
       <StatCard title="Orders" :value="stats.orderCount" icon="truck" />
-      <StatCard title="Saved" :value="`${stats.savedAmount}`" icon="currency-dollar" />
     </div>
 
     <!-- Recent Orders -->
@@ -35,7 +33,7 @@
       <div v-else class="space-y-4">
         <div v-for="order in recentOrders" :key="order.id" 
           class="border rounded-lg p-4 hover:bg-gray-50">
-          <div class="flex justify-between items-start">
+          <router-link :to="'/orders/'+ order.id"><div class="flex justify-between items-start">
             <div>
               <div class="font-medium">Order #{{ order.id.slice(0, 8) }}</div>
               <div class="text-sm text-gray-600">
@@ -50,6 +48,7 @@
               {{ order.status }}
             </span>
           </div>
+          </router-link>
         </div>
       </div>
     </div>
@@ -78,7 +77,7 @@
             class="w-12 h-16 object-cover rounded" />
           <div class="flex-1 min-w-0">
             <div class="font-medium text-sm truncate">{{ item.cards.name }}</div>
-            <div class="text-xs text-gray-600">{{ item.cards.set_number }}</div>
+            <div class="text-xs text-gray-600">{{ item.cards.set_number.toUpperCase() }}</div>
             <div v-if="item.max_price" class="text-xs text-green-600">
               Max: ${{ item.max_price }}
             </div>
@@ -137,20 +136,17 @@ const wishlistItems = ref([])
 
 const fetchDashboardData = async () => {
   try {
-    const [ordersRes, wishlistRes, cartRes] = await Promise.all([
+    const [ordersRes, wishlistRes, ] = await Promise.all([
       api.get('/orders'),
-      api.get('/wishlist?limit=6'),
-      api.get('/cart/summary')
+      api.get('/wishlist?limit=6')
     ])
     
-    recentOrders.value = ordersRes.data
-    wishlistItems.value = wishlistRes.data || []
+    recentOrders.value = ordersRes.data.orders || []
+    wishlistItems.value = wishlistRes.data
     
     stats.value = {
       wishlistCount: wishlistItems.value.length,
-      cartCount: cartRes.data.itemCount || 0,
-      orderCount: recentOrders.value.length,
-      savedAmount: cartRes.data.total || '0.00'
+      orderCount: recentOrders.value.length
     }
   } catch (error) {
     console.error('Error fetching dashboard data:', error)

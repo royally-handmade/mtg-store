@@ -47,7 +47,7 @@ class ScryfallService {
     try {
       const response = await this.axiosInstance.get('/cards/search', { params })
       console.log(response.data.data)
-      if(response.data.data[0].card_faces.length > 0){
+      if(response.data.data[0].card_faces?.length > 0){
         console.log(response.data.data[0].card_faces)
       }
 
@@ -275,6 +275,7 @@ class ScryfallService {
     if (scryfallCard.frame_effects?.includes('showcase')) treatments.push('showcase')
     if (scryfallCard.frame_effects?.includes('extendedart')) treatments.push('extended-art')
     if (scryfallCard.frame_effects?.includes('borderless')) treatments.push('borderless')
+
 
     return treatments.length > 0 ? treatments.join(', ') : ''
   }

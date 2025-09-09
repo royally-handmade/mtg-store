@@ -7,6 +7,70 @@ import { body, validationResult } from 'express-validator'
 
 const router = express.Router()
 
+router.get('/', authenticateUser, async (req, res) => {
+  try {
+    const { 
+      status = 'all',
+      page = 1,
+      limit = 20,
+      start_date,
+      end_date,
+      sort = 'created_at',
+      order = 'desc'
+    } = req.query
+
+    let query = supabase
+      .from('orders')
+      .select(`
+        *,
+        buyer:buyer_id(display_name, email),
+        order_items(
+          *,
+          listings(
+            *,
+            cards(name, set_name, set_number, card_number, image_url, treatment),
+            seller:seller_id(id, display_name)
+          )
+        )
+      `, { count: 'exact' })
+      .eq('buyer_id', req.user.id)
+
+    // Apply filters
+    if (status !== 'all') {
+      query = query.eq('status', status)
+    }
+    if (start_date) {
+      query = query.gte('created_at', start_date)
+    }
+    if (end_date) {
+      query = query.lte('created_at', end_date)
+    }
+
+    // Apply sorting
+    query = query.order(sort, { ascending: order === 'asc' })
+
+    // Apply pagination
+    const offset = (page - 1) * limit
+    query = query.range(offset, offset + limit - 1)
+
+    const { data: orders, count, error } = await query
+
+    if (error) throw error
+
+    res.json({
+      orders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count,
+        totalPages: Math.ceil(count / limit)
+      }
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.patch('/:id/status', authenticateUser, async (req, res) => {
   try {
     const { status } = req.body

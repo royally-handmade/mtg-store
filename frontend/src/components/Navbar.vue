@@ -102,7 +102,7 @@
                 </router-link>
                 </MenuItem>
                 <MenuItem v-if="authStore.isSeller">
-                <router-link to="/seller" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+                <router-link to="/seller-dashboard" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
                   Seller Dashboard
                 </router-link>
                 </MenuItem>

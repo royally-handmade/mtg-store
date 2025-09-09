@@ -48,8 +48,13 @@ const routes = [
     name: 'SharedWishlist',
     component: () => import('@/views/SharedWishlist.vue')
   },
+    {
+    path: '/seller/:id',
+    name: 'SellerProfile',
+    component: () => import('@/views/SellerProfile.vue')
+  },
   {
-    path: '/seller',
+    path: '/seller-dashboard',
     name: 'SellerDashboard',
     component: () => import('@/views/SellerDashboard.vue'),
     meta: { requiresAuth: true, requiresSeller: true }

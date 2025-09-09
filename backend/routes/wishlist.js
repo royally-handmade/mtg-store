@@ -31,8 +31,10 @@ router.get('/', authenticateUser, async (req, res) => {
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false })
       .limit(limit)
-    
+
+      
     const { data, error } = await query
+
     if (error) throw error
     
     // Optionally include current listings for each card
