@@ -102,7 +102,7 @@
         </div>
 
         <!-- Enhanced Price Comparison -->
-        <div class="bg-gray-100 p-4 rounded">
+        <div class="bg-gray-100 p-4 rounded" style="display:none;">
           <h3 class="font-semibold mb-2">Market Price Comparison</h3>
           <div class="space-y-2">
             <!-- Platform Price -->
@@ -144,7 +144,7 @@
         </div>
 
         <!-- Enhanced Price History -->
-        <div class="bg-blue-50 p-4 rounded">
+        <div class="bg-blue-50 p-4 rounded" style="display:none;">
           <h3 class="font-semibold mb-2">Price History (Our Platform)</h3>
           <PriceTrendChart :data="priceHistory" />
 
@@ -171,6 +171,7 @@
             </div>
           </div>
         </div>
+
       </div>
     </div>
 
@@ -330,6 +331,13 @@
           <div class="text-sm">Be the first to list this card!</div>
         </div>
 
+        <div v-if="card && card.oracle_id">
+    <CardVersions 
+      :oracle-id="card.oracle_id" 
+      :current-card-id="card.id"
+    />
+  </div>
+
         <!-- Wishlist Button -->
         <div class="mt-6">
           <WishlistButton :card-id="displayedCard.id" />
@@ -357,6 +365,7 @@
   import TreatmentBadge from '../components/TreatmentBadge.vue'
   import ManaCostDisplay from '../components/ManaCostDisplay.vue'
   import ManaCostInText from '../components/ManaCostInText.vue'
+  import CardVersions from '@/components/CardVersions.vue'
 
   const route = useRoute()
   const authStore = useAuthStore()

@@ -199,6 +199,7 @@ class ScryfallService {
 
     return {
       scryfall_id: scryfallCard.id,
+      oracle_id: scryfallCard.oracle_id,
       name: scryfallCard.name,
       set_number: scryfallCard.set.toUpperCase(),
       card_number: scryfallCard.collector_number,

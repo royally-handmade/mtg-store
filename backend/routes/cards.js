@@ -1006,4 +1006,276 @@ router.get('/:id/price-comparison', async (req, res) => {
   }
 })
 
+
+// Add this route to your existing backend/routes/cards.js file
+
+// Get all versions of a card by oracle_id
+router.get('/versions/:oracle_id', async (req, res) => {
+  try {
+    const { oracle_id } = req.params
+    const { 
+      page = 1, 
+      limit = 12, 
+      exclude_card_id,
+      include_sold_out = false 
+    } = req.query
+
+    const offset = (page - 1) * limit
+
+    // Build the query to get all cards with the same oracle_id
+    let query = supabase
+      .from('cards')
+      .select(`
+        id,
+        name,
+        set_name,
+        set_number,
+        card_number,
+        rarity,
+        treatment,
+        image_url,
+        market_price,
+        foil,
+        nonfoil,
+        released_at,
+        border_color,
+        frame,
+        artist,
+        prices,
+        listings!inner(
+          id,
+          price,
+          condition,
+          quantity,
+          status
+        )
+      `, { count: 'exact' })
+      .eq('oracle_id', oracle_id)
+      .eq('listings.status', 'active')
+
+    // Exclude the current card if specified
+    if (exclude_card_id) {
+      query = query.neq('id', exclude_card_id)
+    }
+
+    // Only include cards with available listings unless explicitly including sold out
+    if (!include_sold_out) {
+      query = query.gt('listings.quantity', 0)
+    }
+
+    // Apply pagination
+    query = query
+      .order('released_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    const { data: cards, count, error } = await query
+
+    if (error) {
+      console.error('Error fetching card versions:', error)
+      throw error
+    }
+
+    // Process the data to include aggregated listing information
+    const processedCards = cards.reduce((acc, card) => {
+      // Check if this card is already in our results
+      const existingCard = acc.find(c => c.id === card.id)
+      
+      if (existingCard) {
+        // Add this listing to the existing card
+        existingCard.listings.push(card.listings)
+      } else {
+        // Create new card entry with first listing
+        acc.push({
+          id: card.id,
+          name: card.name,
+          set_name: card.set_name,
+          set_number: card.set_number,
+          card_number: card.card_number,
+          rarity: card.rarity,
+          treatment: card.treatment,
+          image_url: card.image_url,
+          market_price: card.market_price,
+          foil: card.foil,
+          nonfoil: card.nonfoil,
+          released_at: card.released_at,
+          border_color: card.border_color,
+          frame: card.frame,
+          artist: card.artist,
+          prices: card.prices,
+          listings: [card.listings]
+        })
+      }
+      
+      return acc
+    }, [])
+
+    // Calculate additional information for each card version
+    const enrichedCards = processedCards.map(card => {
+      const allListings = card.listings
+      const foilListings = allListings.filter(l => l.listing_foil === true)
+      const normalListings = allListings.filter(l => l.listing_foil === false)
+
+      // Calculate market prices
+      const normalPrices = normalListings.map(l => l.price)
+      const foilPrices = foilListings.map(l => l.price)
+
+      const lowestNormalPrice = normalPrices.length > 0 ? Math.min(...normalPrices) : null
+      const lowestFoilPrice = foilPrices.length > 0 ? Math.min(...foilPrices) : null
+
+      // Calculate available quantities
+      const totalQuantity = allListings.reduce((sum, l) => sum + (l.quantity || 0), 0)
+      const foilQuantity = foilListings.reduce((sum, l) => sum + (l.quantity || 0), 0)
+
+      return {
+        id: card.id,
+        name: card.name,
+        set_name: card.set_name,
+        set_number: card.set_number,
+        card_number: card.card_number,
+        rarity: card.rarity,
+        treatment: card.treatment,
+        image_url: card.image_url,
+        market_price: lowestNormalPrice || card.market_price,
+        foil_market_price: lowestFoilPrice,
+        released_at: card.released_at,
+        border_color: card.border_color,
+        frame: card.frame,
+        artist: card.artist,
+        prices: card.prices,
+        
+        // Availability information
+        has_foil: foilQuantity > 0,
+        has_normal: normalListings.length > 0,
+        available_listings: allListings.length,
+        total_quantity: totalQuantity,
+        foil_quantity: foilQuantity,
+        
+        // Price ranges
+        price_range: normalPrices.length > 0 ? {
+          min: Math.min(...normalPrices),
+          max: Math.max(...normalPrices),
+          average: normalPrices.reduce((a, b) => a + b, 0) / normalPrices.length
+        } : null,
+        
+        foil_price_range: foilPrices.length > 0 ? {
+          min: Math.min(...foilPrices),
+          max: Math.max(...foilPrices),
+          average: foilPrices.reduce((a, b) => a + b, 0) / foilPrices.length
+        } : null
+      }
+    })
+
+    // Sort by relevance (newest first, then by availability)
+    enrichedCards.sort((a, b) => {
+      // First sort by whether they have listings available
+      if (a.total_quantity > 0 && b.total_quantity === 0) return -1
+      if (a.total_quantity === 0 && b.total_quantity > 0) return 1
+      
+      // Then by release date (newest first)
+      if (a.released_at && b.released_at) {
+        return new Date(b.released_at) - new Date(a.released_at)
+      }
+      
+      // Finally by price (lowest first)
+      const aPrice = a.market_price || 999999
+      const bPrice = b.market_price || 999999
+      return aPrice - bPrice
+    })
+
+    res.json({
+      data: enrichedCards,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit)
+      },
+      meta: {
+        oracle_id,
+        total_versions: count || 0,
+        versions_with_listings: enrichedCards.length
+      }
+    })
+
+  } catch (error) {
+    console.error('Error in card versions endpoint:', error)
+    res.status(500).json({ 
+      error: 'Failed to fetch card versions',
+      message: error.message 
+    })
+  }
+})
+
+// Alternative endpoint for getting just basic version info (lighter query)
+router.get('/versions/:oracle_id/basic', async (req, res) => {
+  try {
+    const { oracle_id } = req.params
+    const { exclude_card_id } = req.query
+
+    let query = supabase
+      .from('cards')
+      .select(`
+        id,
+        name,
+        set_name,
+        set_number,
+        card_number,
+        rarity,
+        treatment,
+        image_url,
+        market_price,
+        released_at
+      `)
+      .eq('oracle_id', oracle_id)
+
+    if (exclude_card_id) {
+      query = query.neq('id', exclude_card_id)
+    }
+
+    const { data: cards, error } = await query
+      .order('released_at', { ascending: false })
+
+    if (error) throw error
+
+    // Get listing counts for each card
+    const cardIds = cards.map(c => c.id)
+    const { data: listingCounts } = await supabase
+      .from('listings')
+      .select('card_id, foil')
+      .in('card_id', cardIds)
+      .eq('status', 'active')
+      .gt('quantity', 0)
+
+    // Enhance cards with listing availability
+    const enhancedCards = cards.map(card => {
+      const cardListings = listingCounts?.filter(l => l.card_id === card.id) || []
+      const hasFoil = cardListings.some(l => l.foil === true)
+      const hasNormal = cardListings.some(l => l.foil === false)
+
+      return {
+        ...card,
+        has_foil: hasFoil,
+        has_normal: hasNormal,
+        available_listings: cardListings.length,
+        has_listings: cardListings.length > 0
+      }
+    })
+
+    res.json({
+      data: enhancedCards,
+      meta: {
+        oracle_id,
+        total_versions: cards.length
+      }
+    })
+
+  } catch (error) {
+    console.error('Error in basic card versions endpoint:', error)
+    res.status(500).json({ 
+      error: 'Failed to fetch card versions',
+      message: error.message 
+    })
+  }
+})
+
 export default router
