@@ -1042,7 +1042,7 @@ router.get('/versions/:oracle_id', async (req, res) => {
         frame,
         artist,
         prices,
-        listings!inner(
+        listings (
           id,
           price,
           condition,
@@ -1051,7 +1051,7 @@ router.get('/versions/:oracle_id', async (req, res) => {
         )
       `, { count: 'exact' })
       .eq('oracle_id', oracle_id)
-      .eq('listings.status', 'active')
+      //.eq('listings.status', 'active')
 
     // Exclude the current card if specified
     if (exclude_card_id) {

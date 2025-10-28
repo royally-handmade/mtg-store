@@ -10,30 +10,30 @@
 
       <form @submit.prevent="handleSubmit" class="space-y-4">
 
-          <!-- Condition Selection (affects price suggestions) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-            <select v-model="form.condition" @change="onConditionChange" required class="input-field">
-              <option value="">Select condition</option>
-              <option value="near_mint">Near Mint</option>
-              <option value="lightly_played">Lightly Played</option>
-              <option value="moderately_played">Moderately Played</option>
-              <option value="heavily_played">Heavily Played</option>
-              <option value="damaged">Damaged</option>
-            </select>
-          </div>
+        <!-- Condition Selection (affects price suggestions) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+          <select v-model="form.condition" @change="onConditionChange" required class="input-field">
+            <option value="">Select condition</option>
+            <option value="near_mint">Near Mint</option>
+            <option value="lightly_played">Lightly Played</option>
+            <option value="moderately_played">Moderately Played</option>
+            <option value="heavily_played">Heavily Played</option>
+            <option value="damaged">Damaged</option>
+          </select>
+        </div>
 
-          <!-- Price Input with Auto-Suggestions -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Price (CAD)</label>
-            <div class="relative">
-              <input v-model="form.price" type="number" step="0.01" min="0" required class="input-field pr-20"
-                placeholder="0.00" @focus="showSuggestions = true" />
-              <button v-if="suggestedPrice && !form.price" type="button" @click="applySuggestedPrice"
-                class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors">
-                Use ${{ suggestedPrice.toFixed(2) }}
-              </button>
-            </div>
+        <!-- Price Input with Auto-Suggestions -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Price (CAD)</label>
+          <div class="relative">
+            <input v-model="form.price" type="number" step="0.01" min="0" required class="input-field pr-20"
+              placeholder="0.00" @focus="showSuggestions = true" />
+            <button v-if="suggestedPrice && !form.price" type="button" @click="applySuggestedPrice"
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors">
+              Use ${{ suggestedPrice.toFixed(2) }}
+            </button>
+          </div>
 
           <!-- Price Suggestions Panel -->
           <div v-if="showSuggestions && (suggestedPrice || priceSuggestions.length > 0)"
@@ -78,11 +78,22 @@
         </div>
 
         <!-- Quantity -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-            <input v-model="form.quantity" type="number" min="1" required class="input-field" placeholder="1" />
-          </div>
-          
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+          <input v-model="form.quantity" type="number" min="1" required class="input-field" placeholder="1" />
+        </div>
+
+        <!-- Foil Checkbox -->
+        <div>
+          <label class="flex items-center space-x-2">
+            <span class="text-sm font-medium text-gray-700">Foil</span>
+            <input v-model="form.foil" type="checkbox"
+              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+            
+          </label>
+          <p class="text-xs text-gray-500 mt-1">Check if this is a foil/premium version of the card</p>
+        </div>
+
         <!-- Market Price Reference -->
         <div class="bg-blue-50 border border-blue-200 rounded p-3">
           <div class="flex justify-between items-center">
@@ -162,7 +173,8 @@
   const form = ref({
     price: '',
     condition: '',
-    quantity: 1
+    quantity: 1,
+    foil: false
   })
 
   // Price suggestion data
@@ -415,7 +427,8 @@
         card_id: props.card.id,
         price: parseFloat(form.value.price),
         condition: form.value.condition,
-        quantity: parseInt(form.value.quantity)
+        quantity: parseInt(form.value.quantity),
+        foil: form.value.foil
       })
 
       toast.success('Listing added successfully!')

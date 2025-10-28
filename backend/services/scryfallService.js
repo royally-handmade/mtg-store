@@ -29,6 +29,22 @@ class ScryfallService {
     this.lastRequestTime = Date.now()
   }
 
+  //Get All Sets
+  async getSets() {
+    await this.rateLimit()
+
+    try {
+      const response = await this.axiosInstance.get('/sets')
+
+      return
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return { success: true, data: [] }
+      }
+      throw this.handleError(error)
+    }
+  }
+
   // Search for cards by name
   async searchCards(query, options = {}) {
     await this.rateLimit()
@@ -47,7 +63,7 @@ class ScryfallService {
     try {
       const response = await this.axiosInstance.get('/cards/search', { params })
       console.log(response.data.data)
-      if(response.data.data[0].card_faces?.length > 0){
+      if (response.data.data[0].card_faces?.length > 0) {
         console.log(response.data.data[0].card_faces)
       }
 
@@ -192,10 +208,36 @@ class ScryfallService {
     }
   }
 
+
+
   // Transform Scryfall card data to your database format
   transformCardData(scryfallCard) {
 
     let dual = scryfallCard.card_faces && scryfallCard.card_faces.length > 0 ? true : false
+
+    //pass specific treatments
+    let treatments = []
+
+    if (scryfallCard.etched) treatments.push('etched')
+    if (scryfallCard.glossy) treatments.push('glossy')
+
+    treatments = treatments.length > 0 ? treatments.join(', ') : ''
+
+    //pass specific frame effects
+    let frame_effects = []
+    if (scryfallCard.frame_effects?.includes('showcase')) frame_effects.push('showcase')
+    if (scryfallCard.frame_effects?.includes('extendedart')) frame_effects.push('extended-art')
+    if (scryfallCard.frame_effects?.includes('borderless')) frame_effects.push('borderless')
+
+    frame_effects = frame_effects.length > 0 ? frame_effects.join(', ') : ''
+
+    //pass specific promo types
+    let promo_types = []
+     if (scryfallCard.promo_types?.includes('boosterfun')) {
+       promo_types = scryfallCard.promo_types.filter(e => e != 'boosterfun')
+     }
+     promo_types = promo_types.length > 0 ? promo_types.join(', ') : ''
+
 
     return {
       scryfall_id: scryfallCard.id,
@@ -211,7 +253,7 @@ class ScryfallService {
       toughness: scryfallCard.toughness || null,
       loyalty: scryfallCard.loyalty || null,
       rarity: scryfallCard.rarity?.toLowerCase(),
-      treatment: null,
+      treatment: treatments,
       image_url: scryfallCard.image_uris?.normal || scryfallCard.card_faces?.[0]?.image_uris?.normal || '',
       image_url_small: scryfallCard.image_uris?.small || scryfallCard.card_faces?.[0]?.image_uris?.small || '',
       image_url_large: scryfallCard.image_uris?.large || scryfallCard.card_faces?.[0]?.image_uris?.large || '',
@@ -250,17 +292,20 @@ class ScryfallService {
         mana_cost: face.mana_cost,
         type_line: face.type_line,
         oracle_text: face.oracle_text,
-        power: face.power,
-        toughness: face.toughness,
-        loyalty: face.loyalty,
+        flavor_text: face.flavor_text ? face.flavor_text : null,
+        power: face.power ? face.power : null,
+        toughness: face.toughness ? face.toughness : null,
+        loyalty: face.loyalty ? face.loyalty : null,
         image_url: face.image_uris?.normal
       })) : null,
       // Market price (will be calculated from your platform's sales)
       market_price: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      frame_effects: scryfallCard.frame_effects,
-      promo_types: scryfallCard.promo_types
+      frame_effects: frame_effects,
+      promo_types: promo_types,
+      flavor_text: scryfallCard.flavor_text,
+      legalities: scryfallCard.legalities
     }
   }
 
@@ -272,14 +317,20 @@ class ScryfallService {
     if (scryfallCard.etched) treatments.push('etched')
     if (scryfallCard.glossy) treatments.push('glossy')
 
-    // Check for special treatments in frame effects
-    if (scryfallCard.frame_effects?.includes('showcase')) treatments.push('showcase')
-    if (scryfallCard.frame_effects?.includes('extendedart')) treatments.push('extended-art')
-    if (scryfallCard.frame_effects?.includes('borderless')) treatments.push('borderless')
-
 
     return treatments.length > 0 ? treatments.join(', ') : ''
   }
+
+  getFrameEffets(scryfallCard) {
+
+    const frame_effects = []
+    if (scryfallCard.frame_effects?.includes('showcase')) frame_effects.push('showcase')
+    if (scryfallCard.frame_effects?.includes('extendedart')) frame_effects.push('extended-art')
+    if (scryfallCard.frame_effects?.includes('borderless')) frame_effects.push('borderless')
+
+    return frame_effects.length > 0 ? frame_effects.join(', ') : ''
+  }
+
 
   // Handle API errors
   handleError(error) {

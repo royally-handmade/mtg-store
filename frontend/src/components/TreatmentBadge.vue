@@ -18,8 +18,7 @@ import { computed } from 'vue'
 import { 
   SparklesIcon,
   StarIcon,
-  GiftIcon,
-  CommandLineIcon,
+  StopIcon,
   ShieldCheckIcon
 } from '@heroicons/vue/24/solid'
 
@@ -52,19 +51,19 @@ const treatmentConfig = {
     text: 'Showcase',
     bgColor: 'bg-gradient-to-r from-purple-500 to-purple-700',
     textColor: 'text-white',
-    icon: GiftIcon
+    icon: StarIcon
   },
   borderless: {
     text: 'Borderless',
     bgColor: 'bg-gradient-to-r from-indigo-500 to-blue-600',
     textColor: 'text-white',
-    icon: CommandLineIcon
+    icon: StopIcon
   },
   'extended-art': {
     text: 'Extended Art',
     bgColor: 'bg-gradient-to-r from-emerald-500 to-teal-600',
     textColor: 'text-white',
-    icon: ShieldCheckIcon
+    icon: StarIcon
   },
   retro: {
     text: 'Retro',
@@ -89,9 +88,9 @@ const treatmentConfig = {
 const config = computed(() => {
   return treatmentConfig[props.treatment?.toLowerCase()] || {
     text: props.treatment,
-    bgColor: 'bg-gray-500',
+    bgColor: 'bg-gradient-to-r from-yellow-400 to-yellow-600',
     textColor: 'text-white',
-    icon: null
+    icon: SparklesIcon
   }
 })
 
@@ -137,12 +136,5 @@ const badgeClasses = computed(() => {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
-}
-
-/* Hover effects */
-span:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease-in-out;
 }
 </style>

@@ -199,7 +199,8 @@ router.post('/listings', requireApprovedSeller, async (req, res) => {
       card_id,
       price,
       condition,
-      quantity
+      quantity,
+      foil
     } = req.body
 
 
@@ -213,6 +214,7 @@ router.post('/listings', requireApprovedSeller, async (req, res) => {
         price,
         quantity,
         status: 'active',
+        foil: foil,
         created_at: new Date()
       })
       .select(`

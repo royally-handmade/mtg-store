@@ -1,11 +1,11 @@
 <!-- Updated CardDetail.vue with Scryfall Integration -->
 <template>
-  <div v-if="displayedCard" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-    <div>
+  <div v-if="displayedCard" class="grid grid-rows-1 lg:grid-rows-2 gap-8">
+    <div class="grid grid-cols-2 gap-2 md:gap-8">
       <!-- Card Image with enhanced double-faced card support -->
       <div class="mb-6">
-        <img :src="currentImageUrl" :alt="displayedCard.name" class="w-full max-w-md mx-auto rounded-lg shadow-lg" />
-
+        <img :src="currentImageUrl" :alt="displayedCard.name"
+          class="w-32 md:w-full md:max-w-md mx-auto rounded-lg shadow-lg" />
         <!-- Enhanced Double-faced card interface -->
         <div v-if="hasMultipleFaces" class="mt-4">
           <p class="text-sm font-medium text-gray-700 text-center mb-3">Double-faced card:</p>
@@ -41,64 +41,86 @@
         </div>
       </div>
 
+
+
       <!-- Enhanced Card Information -->
       <div class="space-y-4">
         <div class="flex items-center gap-3 flex-wrap">
-          <h1 class="text-3xl font-bold">{{ displayedCard.name }}</h1>
-          <TreatmentBadge v-if="displayedCard.treatment" :treatment="displayedCard.treatment" />
-
-          <!-- Additional badges for special attributes -->
-          <span v-if="card.foil" class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
-            Foil Available
-          </span>
-          <span v-if="card.promo" class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">
-            Promo
-          </span>
-          <span v-if="hasMultipleFaces" class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-            {{ card.layout || 'Double-Faced' }}
-          </span>
+          <h2 class="text-2xl font-bold">{{ card.name }}</h2>
         </div>
+
+        <TreatmentBadge v-if="displayedCard.border_color == 'borderless'" :treatment="displayedCard.border_color" />
+        <TreatmentBadge v-if="displayedCard.frame_effects" :treatment="displayedCard.frame_effects" />
+        <TreatmentBadge v-if="displayedCard.promo_types" :treatment="displayedCard.promo_types" />
 
         <!-- Enhanced Card Details Grid -->
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div><strong>Set:</strong> {{ displayedCard.set_name || displayedCard.set_number.toUpperCase() }} </div>
-          <div><strong>Mana Cost:</strong>
-            <ManaCostDisplay :mana-cost="displayedCard.mana_cost" size="large" />
+
+        <div class="grid">
+          <div class="flex">
+            <!--Set Icon Image-->
+            <SetIcon :setCode="displayedCard.set_number" />
+            <!--Set Name-->
+            <h5 class="text-md px-2">
+              {{ displayedCard.set_name }} ({{ displayedCard.set_number.toUpperCase() }})
+            </h5>
           </div>
-          <div v-if="displayedCard.card_number"><strong>Card Number:</strong> {{ displayedCard.card_number }}</div>
 
-          <div v-if="displayedCard.power !== null && displayedCard.toughness !== null"><strong>P/T:</strong> {{
-            displayedCard.power }}/{{ displayedCard.toughness }}</div>
-
-          <div><strong>Rarity:</strong> <span class="capitalize">{{ displayedCard.rarity?.replace('_', ' ') }}</span>
-          </div>
-          <div v-if="displayedCard.released_at"><strong>Released:</strong> {{ formatDate(displayedCard.released_at) }}
-          </div>
-          <div><strong>Type:</strong> {{ displayedCard.type_line }}</div>
-
-
-          <div v-if="displayedCard.loyalty !== null"><strong>Loyalty:</strong> {{ displayedCard.loyalty }}</div>
-          <div v-if="displayedCard.artist"><strong>Artist:</strong> {{ displayedCard.artist }}</div>
-
-        </div>
-
-        <!-- Oracle Text -->
-        <div v-if="displayedCard.oracle_text" class="bg-gray-50 p-4 rounded-lg">
-          <h3 class="font-semibold mb-2">Oracle Text</h3>
-          <div class="text-sm italic leading-relaxed">
-            <ManaCostInText :text="displayedCard.oracle_text" size="small" :preserve-newlines="true" />
-          </div>
-        </div>
-
-        <!-- Keywords -->
-        <div v-if="displayedCard.keywords && displayedCard.keywords.length > 0" class="space-y-2">
-          <h3 class="font-semibold">Keywords</h3>
-          <div class="flex flex-wrap gap-1">
-            <span v-for="keyword in displayedCard.keywords" :key="keyword"
-              class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-              {{ keyword }}
+          <div class="">
+            <!--Card Number / Rarity Name / Foil-->
+            <span class="text-xs capitalize">
+              #{{ displayedCard.card_number }} | {{ displayedCard.rarity?.replace('_', ' ') }} | {{ card.foil ? 'Foil'
+                : null }} {{ card.foil && card.nonfoil ? '/' : null }} {{ card.nonfoil ? 'NonFoil' : null }}
             </span>
           </div>
+          <div class="p-2">
+            <hr />
+          </div>
+
+          <div class="text-sm" v-if="hasMultipleFaces">{{ displayedCard.name }}</div>
+          <div class="grid grid-cols-2 gap-1 bg-gray-200 p-2 rounded-lg text-sm">
+
+            <!--Card Face Details-->
+            <p class="col-span-2" v-if="displayedCard.type_line !== null">{{
+              displayedCard.type_line }}</p>
+
+            <ManaCostDisplay :mana-cost="displayedCard.mana_cost" size="large" />
+
+            <p v-if="displayedCard.power !== null && displayedCard.toughness !== null">{{
+              displayedCard.power }}/{{ displayedCard.toughness }}</p>
+
+            <p v-if="displayedCard.loyalty !== null">{{
+              displayedCard.loyalty }}</p>
+
+          </div>
+
+          <!--Oracle Text-->
+          <div v-if="displayedCard.oracle_text" class=" bg-gray-100 p-3 rounded-lg">
+            <div class="text-sm leading-relaxed">
+              <ManaCostInText :text="displayedCard.oracle_text" size="small" :preserve-newlines="true" />
+            </div>
+            <div v-if="displayedCard.flavor_text" class="text-sm py-3">
+              <i>"{{ displayedCard.flavor_text }}"</i>
+            </div>
+          </div>
+
+          <!--Misc Card Details-->
+          <div class="grid grid-cols-2 p-2">
+            <div v-if="displayedCard.released_at" class="text-xs font-mono"><strong>Released:</strong> {{
+              formatDate(displayedCard.released_at)
+              }}
+            </div>
+            <div v-if="displayedCard.artist" class="text-xs font-mono"><strong>Artist:</strong> {{
+              displayedCard.artist }}
+            </div>
+          </div>
+        </div>
+
+        <div v-if="card && card.oracle_id">
+          <CardVersions :oracle-id="card.oracle_id" :current-card-id="card.id" />
+        </div>
+        <!-- Wishlist Button -->
+        <div class="mt-6">
+          <WishlistButton :card-id="displayedCard.id" />
         </div>
 
         <!-- Enhanced Price Comparison -->
@@ -173,6 +195,7 @@
         </div>
 
       </div>
+
     </div>
 
     <div>
@@ -331,17 +354,6 @@
           <div class="text-sm">Be the first to list this card!</div>
         </div>
 
-        <div v-if="card && card.oracle_id">
-    <CardVersions 
-      :oracle-id="card.oracle_id" 
-      :current-card-id="card.id"
-    />
-  </div>
-
-        <!-- Wishlist Button -->
-        <div class="mt-6">
-          <WishlistButton :card-id="displayedCard.id" />
-        </div>
       </div>
 
       <!-- Add Listing Modal -->
@@ -366,6 +378,7 @@
   import ManaCostDisplay from '../components/ManaCostDisplay.vue'
   import ManaCostInText from '../components/ManaCostInText.vue'
   import CardVersions from '@/components/CardVersions.vue'
+  import SetIcon from '@/components/SetIcon.vue'
 
   const route = useRoute()
   const authStore = useAuthStore()
@@ -482,6 +495,8 @@
     }
   }
 
+
+
   // Enhanced selectCardFace method
   const selectCardFace = (faceIndex) => {
     // Validate input
@@ -520,6 +535,7 @@
       mana_cost: selectedFace.mana_cost || card.value.mana_cost || '',
       type_line: selectedFace.type_line || card.value.type_line || '',
       oracle_text: selectedFace.oracle_text || card.value.oracle_text || '',
+      flavor_text: selectedFace.flavor_text || card.value.flavor_text || '',
       image_url: selectedFace.image_url || card.value.image_url,
       image_url_small: selectedFace.image_url || card.value.image_url_small,
       image_url_large: selectedFace.image_url || card.value.image_url_large,
@@ -538,7 +554,8 @@
       cmc: selectedFace.cmc || card.value.cmc,
       keywords: selectedFace.keywords || card.value.keywords,
       border_color: card.value.border_color,
-      frame: card.value.frame,
+      frame_effects: card.value.frame_effects,
+      promo_types: card.value.promo_types,
       released_at: card.value.released_at
     }
 
@@ -589,115 +606,115 @@
     return colors[condition] || 'bg-gray-100 text-gray-800'
   }
 
-  
+
   const cartStore = useCartStore()
   const toast = useToast()
   const addingToCart = ref(false)
   const addedToCart = ref(new Set()) // Track which listings were added
 
-const addToCart = async (listing) => {
-  // Check if user is authenticated
-  if (!authStore.isAuthenticated) {
-    toast.error('Please sign in to add items to cart')
-    router.push({ name: 'Auth', query: { redirect: route.fullPath } })
-    return
-  }
-
-  // Prevent adding seller's own listings
-  if (listing.seller_id === authStore.user?.id) {
-    toast.error('You cannot purchase your own listings')
-    return
-  }
-
-  // Check if already in cart
-  if (isListingInCart.value(listing)) {
-    toast.warning('This item is already in your cart')
-    return
-  }
-
-  // Check listing availability
-  if (listing.quantity <= 0 || listing.status !== 'active') {
-    toast.error('This listing is no longer available')
-    return
-  }
-
-  addingToCart.value = true
-
-  try {
-    await cartStore.addItem(listing.id, 1)
-    addedToCart.value.add(listing.id)
-
-    toast.success(`Added ${listing.cards?.name || 'card'} to cart`, {
-      timeout: 3000,
-      icon: '🛒'
-    })
-
-    // Auto-remove the "added" state after 3 seconds
-    setTimeout(() => {
-      addedToCart.value.delete(listing.id)
-    }, 3000)
-
-  } catch (error) {
-    console.error('Error adding to cart:', error)
-
-    if (error.response?.status === 409) {
-      toast.warning('This item is already in your cart')
-    } else if (error.response?.status === 400) {
-      toast.error(error.response.data.error || 'Unable to add item to cart')
-    } else {
-      toast.error('Failed to add item to cart. Please try again.')
+  const addToCart = async (listing) => {
+    // Check if user is authenticated
+    if (!authStore.isAuthenticated) {
+      toast.error('Please sign in to add items to cart')
+      router.push({ name: 'Auth', query: { redirect: route.fullPath } })
+      return
     }
-  } finally {
-    addingToCart.value = false
+
+    // Prevent adding seller's own listings
+    if (listing.seller_id === authStore.user?.id) {
+      toast.error('You cannot purchase your own listings')
+      return
+    }
+
+    // Check if already in cart
+    if (isListingInCart.value(listing)) {
+      toast.warning('This item is already in your cart')
+      return
+    }
+
+    // Check listing availability
+    if (listing.quantity <= 0 || listing.status !== 'active') {
+      toast.error('This listing is no longer available')
+      return
+    }
+
+    addingToCart.value = true
+
+    try {
+      await cartStore.addItem(listing.id, 1)
+      addedToCart.value.add(listing.id)
+
+      toast.success(`Added ${listing.cards?.name || 'card'} to cart`, {
+        timeout: 3000,
+        icon: '🛒'
+      })
+
+      // Auto-remove the "added" state after 3 seconds
+      setTimeout(() => {
+        addedToCart.value.delete(listing.id)
+      }, 3000)
+
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+
+      if (error.response?.status === 409) {
+        toast.warning('This item is already in your cart')
+      } else if (error.response?.status === 400) {
+        toast.error(error.response.data.error || 'Unable to add item to cart')
+      } else {
+        toast.error('Failed to add item to cart. Please try again.')
+      }
+    } finally {
+      addingToCart.value = false
+    }
   }
-}
   // Helper function to check if a listing was recently added
   const wasRecentlyAdded = (listingId) => {
     return addedToCart.value.has(listingId)
   }
 
   // Update the button text and styling based on cart state
-const getAddToCartButtonText = (listing) => {
-  if (addingToCart.value) return 'Adding...'
-  if (wasRecentlyAdded(listing.id)) return 'Added!'
-  if (isListingInCart.value(listing)) return 'In Cart'
-  return 'Add to Cart'
-}
-
-const getAddToCartButtonClass = (listing) => {
-  const baseClasses = 'px-4 py-2 rounded text-sm transition-colors font-medium'
-
-  if (addingToCart.value) {
-    return `${baseClasses} bg-gray-400 text-white cursor-not-allowed`
+  const getAddToCartButtonText = (listing) => {
+    if (addingToCart.value) return 'Adding...'
+    if (wasRecentlyAdded(listing.id)) return 'Added!'
+    if (isListingInCart.value(listing)) return 'In Cart'
+    return 'Add to Cart'
   }
 
-  if (wasRecentlyAdded(listing.id)) {
-    return `${baseClasses} bg-green-600 text-white`
-  }
+  const getAddToCartButtonClass = (listing) => {
+    const baseClasses = 'px-4 py-2 rounded text-sm transition-colors font-medium'
 
-  if (isListingInCart.value(listing)) {
-    return `${baseClasses} bg-blue-600 text-white cursor-not-allowed`
-  }
+    if (addingToCart.value) {
+      return `${baseClasses} bg-gray-400 text-white cursor-not-allowed`
+    }
 
-  if (listing.seller_id === authStore.user?.id) {
-    return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
-  }
+    if (wasRecentlyAdded(listing.id)) {
+      return `${baseClasses} bg-green-600 text-white`
+    }
 
-  if (listing.quantity <= 0 || listing.status !== 'active') {
-    return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
-  }
+    if (isListingInCart.value(listing)) {
+      return `${baseClasses} bg-blue-600 text-white cursor-not-allowed`
+    }
 
-  return `${baseClasses} bg-green-600 text-white hover:bg-green-700`
-}
+    if (listing.seller_id === authStore.user?.id) {
+      return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
+    }
+
+    if (listing.quantity <= 0 || listing.status !== 'active') {
+      return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
+    }
+
+    return `${baseClasses} bg-green-600 text-white hover:bg-green-700`
+  }
 
   // Function to check if button should be disabled
-const isAddToCartDisabled = (listing) => {
-  return addingToCart.value ||
-    isListingInCart.value(listing) ||
-    listing.seller_id === authStore.user?.id ||
-    listing.quantity <= 0 || 
-    listing.status !== 'active'
-}
+  const isAddToCartDisabled = (listing) => {
+    return addingToCart.value ||
+      isListingInCart.value(listing) ||
+      listing.seller_id === authStore.user?.id ||
+      listing.quantity <= 0 ||
+      listing.status !== 'active'
+  }
 
   const addToWishlist = (listing) => {
     // Add to wishlist with price watching
@@ -723,10 +740,10 @@ const isAddToCartDisabled = (listing) => {
     // Open the listing modal
     showAddListing.value = true
   }
-//Check if the listing is already in the cart.
+  //Check if the listing is already in the cart.
   const isListingInCart = computed(() => (listing) => {
-  return cartStore.isInCart(listing.id)
-})
+    return cartStore.isInCart(listing.id)
+  })
 
   // Handle successful listing creation
   const onListingCreated = async (newListing) => {
