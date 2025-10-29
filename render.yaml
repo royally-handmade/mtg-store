@@ -6,6 +6,7 @@ services:
   - type: web
     name: mtg-marketplace-backend
     runtime: node
+    region: oregon
     plan: starter
     branch: main
     rootDir: backend
@@ -59,7 +60,6 @@ services:
   - type: web
     name: mtg-marketplace-frontend
     runtime: static
-    region: oregon
     plan: starter
     branch: main
     rootDir: frontend
