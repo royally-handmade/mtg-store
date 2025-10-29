@@ -13,8 +13,8 @@
   
   # Node version
   [build.environment]
-    NODE_VERSION = "18"
-    NPM_VERSION = "8"
+    NODE_VERSION = "20.6.1"
+    NPM_VERSION = "10.8.2"
 
 # Redirect all API calls to Netlify Functions
 [[redirects]]
