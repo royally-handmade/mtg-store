@@ -2,9 +2,10 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from "tailwindcss";
 import { resolve } from 'path'
+import netlify from '@netlify/vite-plugin'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(),netlify()],
     resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
