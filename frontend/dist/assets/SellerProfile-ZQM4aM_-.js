@@ -1,0 +1,1 @@
+import{_ as o,c as t,b as n,d as r,o as s}from"./index-D5lSLxc0.js";s();const a={};function l(c,e,d,p,f,i){return n(),t("div",null,[...e[0]||(e[0]=[r("h1",null,"Title",-1)])])}const _=o(a,[["render",l]]);export{_ as default};
