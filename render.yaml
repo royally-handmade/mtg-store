@@ -7,7 +7,7 @@ services:
     name: mtg-marketplace-backend
     runtime: node
     region: oregon
-    plan: hobby
+    plan: free
     branch: master
     rootDir: backend
     buildCommand: npm install
@@ -60,7 +60,7 @@ services:
   - type: web
     name: mtg-marketplace-frontend
     runtime: static
-    plan: hobby
+    plan: free
     branch: master
     rootDir: frontend
     buildCommand: npm install && npm run build
