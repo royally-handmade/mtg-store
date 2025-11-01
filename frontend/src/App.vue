@@ -1,7 +1,7 @@
 <template>
-  <div id="app" class="min-h-screen bg-gray-50">
+  <div id="app" class="min-h-screen bg-gray-50 flex flex-col">
     <Navbar />
-    <main class="container mx-auto px-2 lg:px-4 py-8">
+    <main class="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-screen-2xl">
       <router-view />
     </main>
     <Footer />
@@ -75,3 +75,20 @@
     }
   }, { immediate: false })
 </script>
+
+<style>
+/* Ensure smooth scrolling on the whole page */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent horizontal overflow */
+body {
+  overflow-x: hidden;
+}
+
+/* Better mobile tap highlight */
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+</style>

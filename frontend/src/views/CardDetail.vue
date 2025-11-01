@@ -1,11 +1,11 @@
 <!-- Updated CardDetail.vue with Scryfall Integration -->
 <template>
-  <div v-if="displayedCard" class="grid grid-rows-1 lg:grid-rows-2 gap-8">
-    <div class="grid grid-cols-2 gap-2 md:gap-8">
+  <div v-if="displayedCard" class="">
+    <div class="grid grid-cols-1 md:grid-cols-2  gap-2 md:gap-8">
       <!-- Card Image with enhanced double-faced card support -->
       <div class="mb-6">
         <img :src="currentImageUrl" :alt="displayedCard.name"
-          class="w-32 md:w-full md:max-w-md mx-auto rounded-lg shadow-lg" />
+          class="w- md:w-full md:max-w-md mx-auto rounded-lg shadow-lg" />
         <!-- Enhanced Double-faced card interface -->
         <div v-if="hasMultipleFaces" class="mt-4">
           <p class="text-sm font-medium text-gray-700 text-center mb-3">Double-faced card:</p>
@@ -24,7 +24,7 @@
           </div>
 
           <!-- Face Preview Thumbnails -->
-          <div class="grid grid-cols-2 gap-2 max-w-md mx-auto">
+          <div class="grid grid-cols-2 gap-2 w-80 md:max-w-md mx-auto">
             <div v-for="(face, index) in card.card_faces" :key="`thumb-${index}`" @click="selectCardFace(index)" :class="[
               'cursor-pointer rounded-lg border-2 transition-all overflow-hidden',
               selectedFaceIndex === index
@@ -115,13 +115,15 @@
           </div>
         </div>
 
+        <div class="mt-6">
+          <WishlistButton :card-id="displayedCard.id" />
+        </div>
+
         <div v-if="card && card.oracle_id">
           <CardVersions :oracle-id="card.oracle_id" :current-card-id="card.id" />
         </div>
         <!-- Wishlist Button -->
-        <div class="mt-6">
-          <WishlistButton :card-id="displayedCard.id" />
-        </div>
+        
 
         <!-- Enhanced Price Comparison -->
         <div class="bg-gray-100 p-4 rounded" style="display:none;">
@@ -257,10 +259,11 @@
           <p class="text-red-600 text-sm">{{ listingError }}</p>
         </div>
 
+
         <!-- Enhanced Listings Display -->
         <div v-for="listing in filteredAndSortedListings" :key="listing.id"
           class="bg-gray-50 rounded p-4 hover:bg-gray-100 transition-colors">
-          <div class="flex items-center justify-between">
+          <div class="flex justify-between">
             <div class="flex-1">
               <div class="flex items-center justify-between mb-2">
                 <div class="text-lg font-semibold text-green-600">
@@ -326,11 +329,6 @@
                   {{ getAddToCartButtonText(listing) }}
                 </span>
               </button>
-
-              <button @click="addToWishlist(listing)"
-                class="border border-gray-300 text-gray-700 px-4 py-1 rounded text-xs hover:bg-gray-50 transition-colors">
-                Watch Price
-              </button>
             </div>
           </div>
         </div>
@@ -379,6 +377,7 @@
   import ManaCostInText from '../components/ManaCostInText.vue'
   import CardVersions from '@/components/CardVersions.vue'
   import SetIcon from '@/components/SetIcon.vue'
+
 
   const route = useRoute()
   const authStore = useAuthStore()

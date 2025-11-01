@@ -1,259 +1,269 @@
 <template>
-  <div class="bg-white rounded-lg shadow p-4">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold">Other Printings</h2>
-      <span v-if="loading" class="text-sm text-gray-500">Loading...</span>
-      <span v-else-if="cardVersions.length > 0" class="text-sm text-gray-500">
-        {{ cardVersions.length }} printing{{ cardVersions.length !== 1 ? 's' : '' }} found
-      </span>
-    </div>
+  <div class="card-versions">
+    <h3 class="text-lg sm:text-xl font-bold mb-4 sm:mb-6">Other Versions & Printings</h3>
 
     <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center py-8">
+    <div v-if="loading && !loadingMore" class="flex justify-center py-8">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
     </div>
 
-    <!-- No Other Versions -->
-    <div v-else-if="cardVersions.length === 0" class="text-center py-8 text-gray-500">
-      <p>No other printings of this card are available in our database.</p>
-    </div>
-
-    <!-- Card Versions Table -->
-    <div v-else class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
+    <!-- Desktop Table View (hidden on mobile) -->
+    <div v-else-if="cardVersions.length > 0" class="hidden md:block overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
         <thead class="bg-gray-50">
           <tr>
-            <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Set
             </th>
-            <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              No.
-            </th>
-            <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Rarity
             </th>
-            <th scope="col" class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Number
+            </th>
+            <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Price
             </th>
-
+            <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Foil Price
+            </th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr 
-            v-for="version in cardVersions" 
-            :key="version.id"
-            class="hover:bg-gray-50 transition-colors"
-          >
-            <!-- Set Information -->
-            <td class="px-2 whitespace-nowrap">
-              <div>
-                <div class="text-sm text-gray-900 font-medium">
-                  {{ version.set_number?.toUpperCase() }}
-                </div>
-              </div>
-            </td>
+          <tr v-for="version in cardVersions" :key="version.id"
+            class="hover:bg-gray-50 transition-colors cursor-pointer" @click="navigateToVersion(version.id)">
+            <td class="p-2 lg:px-4">
+              <div class="flex items-center space-x-2">
 
-            <!-- Card Number -->
-            <td class="px-2 whitespace-nowrap">
-              <span class="text-sm font-mono text-gray-900">
-                <a :href="`/card/${version.id}`" class="hover:text-blue-600"><u>{{ version.card_number || '—' }}</u></a>
-              </span>
-            </td>
-
-            <!-- Rarity -->
-            <td class="px-2 whitespace-nowrap">
-              <span :class="getRarityClass(version.rarity)" class="inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize">
-                {{ version.rarity?.replace('_', ' ') }}
-              </span>
-            </td>
-
-            <!-- Market Price -->
-            <td class="px-4 whitespace-nowrap">
-              <div class="space-y-1">
-                <!-- Normal Price -->
-                <div v-if="version.market_price" class="text-sm">
-                  <span class="font-semibold text-green-600">
-                    ${{ version.market_price.toFixed(2) }}
-                  </span>
-                  <span class="text-xs text-gray-500 ml-1">CAD</span>
-                </div>
-                
-                <!-- Foil Price -->
-                <div v-if="version.foil_market_price" class="text-sm">
-                  <div class="flex items-center space-x-1">
-                    <svg class="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    <span class="font-semibold text-yellow-600">
-                      ${{ version.foil_market_price.toFixed(2) }}
-                    </span>
+                <div>
+                  <div class="text-xs text-gray-900">
+                    {{ version.set_name }}
                   </div>
                 </div>
-
-                <!-- No Price Available -->
-                <div v-if="!version.market_price && !version.foil_market_price" class="text-sm text-gray-400">
-                  No price data
+              </div>
+            </td>
+            <td class="px-2 lg:px-4">
+              <span :class="getRarityClass(version.rarity)"
+                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full capitalize">
+                {{ version.rarity.replace('_', ' ') }}
+              </span>
+            </td>
+            <td class="px-2 lg:px-4 text-sm text-gray-900">
+              <a :href="`/card/${version.id}`" class="hover:text-blue-600"><u>{{ version.card_number || '—' }}</u></a>
+            </td>
+            <td class="px-2 lg:px-4">
+              <div class="text-sm">
+                <div v-if="version.prices?.usd" class="text-gray-900">
+                  ${{ parseFloat(version.prices.usd).toFixed(2) }}
+                </div>
+                <div v-else class="text-gray-400">
+                  N/A
                 </div>
               </div>
             </td>
-
+            <td class="px-2 lg:px-4">
+              <div v-if="version.prices?.usd_foil" class="px-2 text-sm">
+                <span class="text-yellow-600">
+                  ✶ ${{ version.prices.usd_foil.toFixed(2) }}
+                </span>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Load More Button (if pagination is needed) -->
-    <div v-if="hasMoreVersions && !loading" class="text-center mt-6 pt-4 border-t border-gray-200">
-      <button 
-        @click="loadMoreVersions"
-        :disabled="loadingMore"
-        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        <svg v-if="loadingMore" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span v-if="loadingMore">Loading...</span>
-        <span v-else>Load More Printings</span>
+    <!-- Mobile Card View (shown only on mobile) -->
+    <div v-else-if="cardVersions.length > 0" class="md:hidden space-y-3">
+      <div v-for="version in cardVersions" :key="version.id"
+        class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        @click="navigateToVersion(version.id)">
+        <!-- Set Info -->
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex items-center space-x-2 flex-1 min-w-0">
+            <img v-if="version.set_icon_svg_uri" :src="version.set_icon_svg_uri" :alt="version.set_name"
+              class="h-5 w-5 flex-shrink-0" />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-gray-900 truncate">
+                {{ version.set_name }}
+              </p>
+              <p class="text-xs text-gray-500">
+                {{ version.set_number.toUpperCase() }}
+              </p>
+            </div>
+          </div>
+          <span :class="getRarityClass(version.rarity)"
+            class="inline-flex px-2 py-1 text-xs font-semibold rounded-full capitalize flex-shrink-0 ml-2">
+            {{ version.rarity.replace('_', ' ') }}
+          </span>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-gray-100">
+          <div>
+            <p class="text-xs text-gray-500 mb-1">Card Number</p>
+            <p class="text-sm font-medium text-gray-900">{{ version.card_number }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 mb-1">Price</p>
+            <p class="text-sm font-semibold text-gray-900">
+              <span v-if="version.prices?.usd">
+                ${{ parseFloat(version.prices.usd).toFixed(2) }}
+              </span>
+              <span v-else class="text-gray-400">N/A</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <button @click.stop="navigateToVersion(version.id)"
+          class="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
+          View Details
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else-if="!loading" class="text-center py-8 text-gray-500">
+      No other versions found
+    </div>
+
+    <!-- Load More Button -->
+    <div v-if="hasMoreVersions && !loading" class="mt-6 text-center">
+      <button @click="loadMoreVersions" :disabled="loadingMore"
+        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+        {{ loadingMore ? 'Loading...' : 'Load More' }}
       </button>
     </div>
 
-    <!-- Summary Footer -->
-    <div v-if="cardVersions.length > 0" class="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600">
-      <div class="flex justify-between items-center">
-        <span>
-          Showing {{ cardVersions.length }} of {{ totalVersions || cardVersions.length }} total printings
-        </span>
-      </div>
+    <!-- Loading More Indicator -->
+    <div v-if="loadingMore" class="flex justify-center py-4">
+      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import api from '@/lib/api'
+  import { ref, watch, onMounted } from 'vue'
+  import { useRouter } from 'vue-router'
+  import api from '@/lib/api'
 
-const props = defineProps({
-  oracleId: {
-    type: String,
-    required: true
-  },
-  currentCardId: {
-    type: [String, Number],
-    required: true
-  }
-})
+  const props = defineProps({
+    oracleId: {
+      type: String,
+      required: true
+    }
+  })
 
-const router = useRouter()
-const cardVersions = ref([])
-const loading = ref(true)
-const loadingMore = ref(false)
-const hasMoreVersions = ref(false)
-const currentPage = ref(1)
-const totalVersions = ref(0)
-const pageSize = 15
+  const router = useRouter()
 
-// Fetch card versions based on oracle_id
-const fetchCardVersions = async (page = 1, append = false) => {
-  try {
-    if (page === 1) loading.value = true
-    else loadingMore.value = true
+  const cardVersions = ref([])
+  const loading = ref(false)
+  const loadingMore = ref(false)
+  const hasMoreVersions = ref(false)
+  const currentPage = ref(1)
+  const totalVersions = ref(0)
 
-    const response = await api.get(`/cards/versions/${props.oracleId}`, {
-      params: {
-        page,
-        limit: pageSize,
-        exclude_card_id: props.currentCardId
-      }
-    })
-
-    const { data, pagination, meta } = response.data
-
-    if (append) {
-      cardVersions.value.push(...data)
+  const fetchCardVersions = async (page = 1, append = false) => {
+    if (page === 1) {
+      loading.value = true
     } else {
-      cardVersions.value = data
+      loadingMore.value = true
     }
 
-    hasMoreVersions.value = pagination.page < pagination.totalPages
-    currentPage.value = pagination.page
-    totalVersions.value = meta.total_versions
+    try {
+      const response = await api.get(`/cards/versions/${props.oracleId}`, {
+        params: {
+          page,
+          limit: 10
+        }
+      })
 
-  } catch (error) {
-    console.error('Error fetching card versions:', error)
-    cardVersions.value = []
-  } finally {
-    loading.value = false
-    loadingMore.value = false
+      const { data, pagination, meta } = response.data
+
+      if (append) {
+        cardVersions.value.push(...data)
+      } else {
+        cardVersions.value = data
+      }
+
+      hasMoreVersions.value = pagination.page < pagination.totalPages
+      currentPage.value = pagination.page
+      totalVersions.value = meta.total_versions
+
+    } catch (error) {
+      console.error('Error fetching card versions:', error)
+      cardVersions.value = []
+    } finally {
+      loading.value = false
+      loadingMore.value = false
+    }
   }
-}
 
-// Load more versions for pagination
-const loadMoreVersions = () => {
-  if (!hasMoreVersions.value || loadingMore.value) return
-  fetchCardVersions(currentPage.value + 1, true)
-}
-
-// Navigate to a specific card version
-
-// Get rarity-specific CSS classes
-const getRarityClass = (rarity) => {
-  const rarityClasses = {
-    common: 'bg-gray-100 text-gray-800',
-    uncommon: 'bg-green-100 text-green-800',
-    rare: 'bg-yellow-100 text-yellow-800',
-    mythic: 'bg-red-100 text-red-800',
-    mythic_rare: 'bg-red-100 text-red-800',
-    special: 'bg-purple-100 text-purple-800'
+  const loadMoreVersions = () => {
+    if (!hasMoreVersions.value || loadingMore.value) return
+    fetchCardVersions(currentPage.value + 1, true)
   }
-  return rarityClasses[rarity] || 'bg-gray-100 text-gray-800'
-}
 
-// Watch for oracle_id changes
-watch(() => props.oracleId, (newOracleId) => {
-  if (newOracleId) {
-    currentPage.value = 1
-    fetchCardVersions()
+  const navigateToVersion = (cardId) => {
+    router.push(`/card/${cardId}`)
   }
-}, { immediate: true })
 
-onMounted(() => {
-  if (props.oracleId) {
-    fetchCardVersions()
+  const getRarityClass = (rarity) => {
+    const rarityClasses = {
+      common: 'bg-gray-100 text-gray-800',
+      uncommon: 'bg-green-100 text-green-800',
+      rare: 'bg-yellow-100 text-yellow-800',
+      mythic: 'bg-red-100 text-red-800',
+      mythic_rare: 'bg-red-100 text-red-800',
+      special: 'bg-purple-100 text-purple-800'
+    }
+    return rarityClasses[rarity] || 'bg-gray-100 text-gray-800'
   }
-})
+
+  watch(() => props.oracleId, (newOracleId) => {
+    if (newOracleId) {
+      currentPage.value = 1
+      fetchCardVersions()
+    }
+  }, { immediate: true })
+
+  onMounted(() => {
+    if (props.oracleId) {
+      fetchCardVersions()
+    }
+  })
 </script>
 
 <style scoped>
-/* Custom styles for the table */
-table {
-  border-collapse: separate;
-  border-spacing: 0;
-}
 
-th:first-child {
-  border-top-left-radius: 0.375rem;
-}
+  /* Custom styles for better mobile experience */
+  @media (max-width: 768px) {
 
-th:last-child {
-  border-top-right-radius: 0.375rem;
-}
+    /* Ensure touch targets are adequate */
+    button {
+      min-height: 44px;
+    }
 
-/* Hover effect for table rows */
-tbody tr:hover {
-  background-color: rgb(249 250 251);
-}
-
-/* Responsive table on smaller screens */
-@media (max-width: 768px) {
-  .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
+    /* Smooth scrolling for card list */
+    .space-y-3 {
+      -webkit-overflow-scrolling: touch;
+    }
   }
-  
-  th, td {
-    padding: 0.75rem 0.5rem;
-    font-size: 0.875rem;
+
+  /* Table hover effects */
+  tbody tr:hover {
+    background-color: rgb(249 250 251);
   }
-}
+
+  /* Loading spinner animation */
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
 </style>

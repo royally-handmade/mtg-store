@@ -489,6 +489,8 @@ router.post('/bulk-update-scryfall-prices', authenticateAdmin, async (req, res) 
             continue
           }
 
+
+          //TODO: Implement CAD
           // Update card with new price data
           const { error: updateError } = await supabase
             .from('cards')
