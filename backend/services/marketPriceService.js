@@ -80,7 +80,26 @@ class MarketPriceService {
         console.log(`📈 Card ${cardId}: Calculated from ${salesUsed} recent sales = $${calculatedPrice.toFixed(2)}`)
       }
 
-      // Fallback 1: Use average of current active listings
+      // Fallback 1: Use most recent active listing price if no orders found
+      if (!calculatedPrice) {
+        const { data: recentListings } = await supabase
+          .from('listings')
+          .select('price, created_at, updated_at')
+          .eq('card_id', cardId)
+          .eq('status', 'active')
+          .gt('quantity', 0)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+
+        if (recentListings && recentListings.length > 0) {
+          calculatedPrice = recentListings[0].price
+          priceSource = 'recent_active_listing'
+          
+          console.log(`📊 Card ${cardId}: Using most recent active listing price = $${calculatedPrice.toFixed(2)}`)
+        }
+      }
+
+      // Fallback 2: Use average of current active listings
       if (!calculatedPrice) {
         const { data: currentListings } = await supabase
           .from('listings')
@@ -100,13 +119,13 @@ class MarketPriceService {
           })
 
           calculatedPrice = totalWeightedPrice / totalQuantity
-          priceSource = 'current_listings'
+          priceSource = 'current_listings_average'
           
-          console.log(`📊 Card ${cardId}: Calculated from current listings = $${calculatedPrice.toFixed(2)}`)
+          console.log(`📊 Card ${cardId}: Calculated from current listings average = $${calculatedPrice.toFixed(2)}`)
         }
       }
 
-      // Fallback 2: Use external price data (Scryfall, etc.)
+      // Fallback 3: Use external price data (Scryfall, etc.)
       if (!calculatedPrice) {
         const { data: card } = await supabase
           .from('cards')
@@ -184,16 +203,21 @@ class MarketPriceService {
       if (cardIds && Array.isArray(cardIds)) {
         query = query.in('id', cardIds)
       }
-      // Or only cards that have had sales
-      else if (onlyCardsWithSales) {
-        query = query.in('id', supabase
+
+      // Filter to only cards with sales if requested
+      if (onlyCardsWithSales) {
+        // This requires a more complex query - get cards that have order_items
+        const { data: cardsWithSales } = await supabase
           .from('order_items')
           .select('listings!inner(cards!inner(id))')
-          .eq('orders.status', 'completed')
-        )
+          .neq('listings.cards.id', null)
+
+        const uniqueCardIds = [...new Set(cardsWithSales.map(item => item.listings.cards.id))]
+        query = query.in('id', uniqueCardIds)
       }
 
-      const { data: cards, error } = await query.order('id')
+      const { data: cards, error } = await query
+
       if (error) throw error
 
       console.log(`🔄 Calculating market prices for ${cards.length} cards...`)
@@ -202,44 +226,31 @@ class MarketPriceService {
       let successful = 0
       let failed = 0
 
-      // Process in batches to avoid overwhelming the database
+      // Process cards in batches
       for (let i = 0; i < cards.length; i += batchSize) {
         const batch = cards.slice(i, i + batchSize)
         
-        // Process batch in parallel
-        const batchPromises = batch.map(card => 
-          this.calculateMarketPriceForCard(card.id)
+        const results = await Promise.allSettled(
+          batch.map(card => this.calculateMarketPriceForCard(card.id))
         )
-        
-        const batchResults = await Promise.allSettled(batchPromises)
-        
-        batchResults.forEach((result, index) => {
+
+        results.forEach(result => {
+          processed++
           if (result.status === 'fulfilled' && result.value.success) {
             successful++
           } else {
             failed++
-            console.error(`❌ Failed to process card ${batch[index].id}:`, 
-              result.reason || result.value?.error)
           }
-          processed++
         })
 
-        // Small delay between batches
-        if (i + batchSize < cards.length) {
-          await new Promise(resolve => setTimeout(resolve, 100))
-        }
-
-        // Progress logging
-        if (processed % 100 === 0 || processed === cards.length) {
-          console.log(`📊 Progress: ${processed}/${cards.length} cards processed (${successful} successful, ${failed} failed)`)
-        }
+        console.log(`⏳ Progress: ${processed}/${cards.length} cards processed (${successful} successful, ${failed} failed)`)
       }
 
       console.log(`✅ Market price calculation complete: ${successful} successful, ${failed} failed`)
 
-      return {
-        success: true,
-        totalProcessed: processed,
+      return { 
+        success: true, 
+        totalCards: cards.length,
         successful,
         failed
       }
