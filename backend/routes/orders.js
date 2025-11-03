@@ -226,11 +226,19 @@ router.post('/bulk-complete', authenticateUser, async (req, res) => {
   }
 })
 
+
 // Get market price statistics (admin endpoint)
 router.get('/admin/market-price-stats', authenticateAdmin, async (req, res) => {
   try {
+    // ✅ This will now use the materialized view
     const stats = await marketPriceService.getMarketPriceStats()
-    res.json(stats)
+    
+    // Add view metadata
+    res.json({
+      ...stats,
+      source: 'materialized_view',
+      note: 'Data is refreshed every 15 minutes'
+    })
   } catch (error) {
     console.error('Error getting market price stats:', error)
     res.status(500).json({ error: error.message })
@@ -238,29 +246,31 @@ router.get('/admin/market-price-stats', authenticateAdmin, async (req, res) => {
 })
 
 // Manual price recalculation endpoint (admin only)
-router.post('/admin/recalculate-prices', authenticateAdmin, async (req, res) => {
+// Manual refresh of market price stats (admin only)
+router.post('/admin/refresh-market-price-stats', authenticateAdmin, async (req, res) => {
   try {
-    const {
-      card_ids = null,
-      only_cards_with_sales = false,
-      batch_size = 50
-    } = req.body
-
-    console.log('🔄 Manual price recalculation triggered by admin...')
-
-    const result = await marketPriceService.calculateAllMarketPrices({
-      cardIds: card_ids,
-      onlyCardsWithSales: only_cards_with_sales,
-      batchSize: batch_size
-    })
-
+    console.log('🔄 Manual refresh of market_price_stats triggered by admin...')
+    
+    const startTime = Date.now()
+    
+    // Trigger refresh
+    const { error } = await supabase.rpc('refresh_market_price_stats_view')
+    
+    if (error) throw error
+    
+    const duration = Date.now() - startTime
+    
+    // Get fresh stats
+    const stats = await marketPriceService.getMarketPriceStats()
+    
     res.json({
-      message: 'Price recalculation completed',
-      ...result
+      message: 'Market price stats refreshed successfully',
+      duration_ms: duration,
+      stats
     })
-
+    
   } catch (error) {
-    console.error('Error in manual price recalculation:', error)
+    console.error('Error refreshing market price stats:', error)
     res.status(500).json({ error: error.message })
   }
 })

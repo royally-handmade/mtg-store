@@ -148,7 +148,7 @@ app.use('*', (req, res) => {
 
 // Optional: Run initial price calculation on server startup
 // Uncomment this section if you want to calculate prices immediately when server starts
-/*setTimeout(async () => {
+setTimeout(async () => {
   try {
     console.log('🔄 Running initial market price calculation...')
     
@@ -191,7 +191,6 @@ process.on('unhandledRejection', (error) => {
   console.error('💥 Critical server error:', error)
   throw error
 })
-  */
 
 
 app.listen(PORT, () => {

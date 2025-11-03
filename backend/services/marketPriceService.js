@@ -48,7 +48,7 @@ class MarketPriceService {
         .eq('orders.status', 'completed')
         .eq('listings.cards.id', cardId)
         .gte('orders.created_at', sinceDate.toISOString())
-        .order('orders.created_at', { ascending: false })
+       // .order('orders.created_at', { asc:false })
 
       if (salesError) throw salesError
 
@@ -205,7 +205,7 @@ class MarketPriceService {
       }
 
       // Filter to only cards with sales if requested
-      if (onlyCardsWithSales) {
+    /*  if (onlyCardsWithSales) {
         // This requires a more complex query - get cards that have order_items
         const { data: cardsWithSales } = await supabase
           .from('order_items')
@@ -214,7 +214,7 @@ class MarketPriceService {
 
         const uniqueCardIds = [...new Set(cardsWithSales.map(item => item.listings.cards.id))]
         query = query.in('id', uniqueCardIds)
-      }
+      }*/
 
       const { data: cards, error } = await query
 
@@ -227,6 +227,9 @@ class MarketPriceService {
       let failed = 0
 
       // Process cards in batches
+      // Note: Each card uses calculateMarketPriceForCard which includes the full fallback logic:
+      // 1. Sales average, 2. Recent active listing, 3. Current listings average, 
+      // 4. External Scryfall, 5. Existing price, 6. Minimum fallback
       for (let i = 0; i < cards.length; i += batchSize) {
         const batch = cards.slice(i, i + batchSize)
         
@@ -366,49 +369,41 @@ class MarketPriceService {
   /**
    * Get market price statistics
    */
-  async getMarketPriceStats() {
-    try {
-      // Get overall stats
-      const { data: overallStats, error: statsError } = await supabase
-        .from('cards')
-        .select('market_price, market_price_source, market_price_updated_at', { count: 'exact' })
-        .not('market_price', 'is', null)
+// In marketPriceService.js
+async getMarketPriceStats() {
+  try {
+    const startTime = Date.now()
+    
+    const { data, error } = await supabase
+      .from('market_price_stats')
+      .select('*')
+      .single()
 
-      if (statsError) throw statsError
+    if (error) throw error
 
-      // Group by price source
-      const sourceStats = {}
-      let totalCards = 0
-      let averagePrice = 0
-
-      overallStats.forEach(card => {
-        const source = card.market_price_source || 'unknown'
-        sourceStats[source] = (sourceStats[source] || 0) + 1
-        totalCards++
-        averagePrice += parseFloat(card.market_price || 0)
-      })
-
-      averagePrice = totalCards > 0 ? averagePrice / totalCards : 0
-
-      // Get recent update stats
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      const { count: recentlyUpdated } = await supabase
-        .from('cards')
-        .select('*', { count: 'exact', head: true })
-        .gte('market_price_updated_at', oneDayAgo)
-
-      return {
-        totalCardsWithPrices: totalCards,
-        averageMarketPrice: parseFloat(averagePrice.toFixed(2)),
-        priceSourceBreakdown: sourceStats,
-        recentlyUpdated: recentlyUpdated || 0
-      }
-
-    } catch (error) {
-      console.error('❌ Error getting market price stats:', error)
-      throw error
+    const duration = Date.now() - startTime
+    
+    // Log performance
+    if (duration > 1000) {
+      console.warn(`⚠️ market_price_stats query took ${duration}ms (may need optimization)`)
+    } else {
+      console.log(`✅ market_price_stats fetched in ${duration}ms`)
     }
+
+    return {
+      totalCardsWithPrices: data.total_cards_with_prices,
+      averageMarketPrice: parseFloat(data.average_market_price),
+      priceSourceBreakdown: data.price_source_breakdown,
+      recentlyUpdated: data.recently_updated_count,
+      lastRefreshed: data.last_refreshed_at,
+      queryDuration: duration
+    }
+
+  } catch (error) {
+    console.error('❌ Error getting market price stats from view:', error)
+    throw error
   }
+}
 }
 
 // Create and export singleton instance

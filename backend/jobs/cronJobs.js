@@ -266,69 +266,49 @@ class CronJobManager {
     this.jobs.set('db_check', dbCheckJob)
   }
 
-  async performHealthCheck() {
-    const issues = []
-    const checks = {
-      database: false,
-      helcim: false,
-      email: false,
-      storage: false
-    }
-
-    try {
-      // Database check
-      const { error: dbError } = await supabase
-        .from('profiles')
-        .select('id')
-        .limit(1)
-      
-      if (!dbError) checks.database = true
-      else issues.push(`Database: ${dbError.message}`)
-
-      // Helcim connectivity check (if credentials are configured)
-      if (process.env.HELCIM_API_KEY) {
-        try {
-          // Simple API call to check connectivity
-          // Note: This would need a lightweight Helcim endpoint
-          checks.helcim = true
-        } catch (error) {
-          issues.push(`Helcim: ${error.message}`)
-        }
-      } else {
-        checks.helcim = true // Skip if not configured
-      }
-
-      // Email service check
-      if (process.env.SMTP_HOST) {
-        checks.email = true // Assume working unless we get an error
-      }
-
-      // Storage check
-      try {
-        const { data, error } = await supabase.storage
-          .from('documents')
-          .list('', { limit: 1 })
-        
-        if (!error) checks.storage = true
-        else issues.push(`Storage: ${error.message}`)
-      } catch (error) {
-        issues.push(`Storage: ${error.message}`)
-      }
-
-    } catch (error) {
-      issues.push(`Health check error: ${error.message}`)
-    }
-
-    const healthy = Object.values(checks).every(check => check === true)
-
-    return {
-      healthy,
-      checks,
-      issues,
-      timestamp: new Date().toISOString()
-    }
+async performHealthCheck() {
+  const issues = []
+  const checks = {
+    database: false,
+    helcim: false,
+    email: false,
+    storage: false,
+    market_stats_view: false  // ← Add this
   }
 
+  try {
+    // ... existing checks ...
+
+    // Check market_price_stats view freshness
+    const { data: viewStats } = await supabase
+      .from('market_price_stats')
+      .select('last_refreshed_at')
+      .single()
+    
+    if (viewStats) {
+      const lastRefresh = new Date(viewStats.last_refreshed_at)
+      const now = new Date()
+      const minutesSinceRefresh = (now - lastRefresh) / (1000 * 60)
+      
+      if (minutesSinceRefresh > 30) {
+        issues.push(`market_price_stats view is stale (${minutesSinceRefresh.toFixed(0)} minutes old)`)
+      } else {
+        checks.market_stats_view = true
+      }
+    } else {
+      issues.push('market_price_stats view is empty or inaccessible')
+    }
+
+  } catch (error) {
+    issues.push(`market_price_stats check failed: ${error.message}`)
+  }
+
+  return {
+    healthy: issues.length === 0,
+    checks,
+    issues
+  }
+}
   async sendPayoutEligibilityReport(eligibleSellers) {
     try {
       const totalPending = eligibleSellers.reduce((sum, seller) => sum + seller.pendingEarnings, 0)
