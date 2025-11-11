@@ -8,15 +8,12 @@
     </div>
 
     <!-- Desktop Table View (hidden on mobile) -->
-    <div v-else-if="cardVersions.length > 0" class="hidden md:block overflow-x-auto">
+    <div v-if="cardVersions.length > 0" class="hidden md:block overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
         <thead class="bg-gray-50">
           <tr>
             <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Set
-            </th>
-            <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Rarity
             </th>
             <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Number
@@ -27,27 +24,29 @@
             <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Foil Price
             </th>
+            <th class="p-2 md:p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Treatment
+            </th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
           <tr v-for="version in cardVersions" :key="version.id"
-            class="hover:bg-gray-50 transition-colors cursor-pointer" @click="navigateToVersion(version.id)">
+            class="hover:bg-gray-50 transition-colors cursor-pointer" :class="[
+              'hover:bg-gray-50 transition-colors cursor-pointer',
+              version.id === currentCardId
+                ? 'bg-blue-50'
+                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+            ]" @click="navigateToVersion(version.id)">
             <td class="p-2 lg:px-4">
               <div class="flex items-center space-x-2">
-
                 <div>
                   <div class="text-xs text-gray-900">
-                    {{ version.set_name }}
+                    {{ version.set_number }}
                   </div>
                 </div>
               </div>
             </td>
-            <td class="px-2 lg:px-4">
-              <span :class="getRarityClass(version.rarity)"
-                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full capitalize">
-                {{ version.rarity.replace('_', ' ') }}
-              </span>
-            </td>
+
             <td class="px-2 lg:px-4 text-sm text-gray-900">
               <a :href="`/card/${version.id}`" class="hover:text-blue-600"><u>{{ version.card_number || '—' }}</u></a>
             </td>
@@ -68,58 +67,80 @@
                 </span>
               </div>
             </td>
+            <td class="px-2 lg:px-4">
+              <div class="flex flex-wrap gap-1">
+                <!-- Card Treatment (foil, etched, etc.) -->
+                <TreatmentBadge v-if="version.treatment && version.treatment !== 'foil'" :treatment="version.treatment"
+                  condensed size="xs" />
+
+                <!-- Border Treatment (borderless) -->
+                <TreatmentBadge v-if="version.border_color === 'borderless'" treatment="borderless" condensed
+                  size="xs" />
+
+                <!-- Frame Effects (showcase, extended-art, etc.) -->
+                <TreatmentBadge v-if="version.frame_effects" :treatment="version.frame_effects" condensed size="xs" />
+
+                <!-- Promo Types -->
+                <TreatmentBadge v-if="version.promo_types && version.promo_types !== 'universesbeyond'"
+                  :treatment="version.promo_types" condensed size="xs" />
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <!-- Mobile Card View (shown only on mobile) -->
-    <div v-else-if="cardVersions.length > 0" class="md:hidden space-y-3">
-      <div v-for="version in cardVersions" :key="version.id"
-        class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-        @click="navigateToVersion(version.id)">
-        <!-- Set Info -->
-        <div class="flex items-start justify-between mb-3">
+    <div v-if="cardVersions.length > 0" class="md:hidden">
+      <div v-for="version in cardVersions" :key="version.id" :class="[
+        'bg-white border px-2 py-1 transition-all cursor-pointer',
+        version.id === currentCardId
+          ? 'bg-blue-50'
+          : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+      ]" @click="navigateToVersion(version.id)">
+        <!-- Compact header with set info and price -->
+        <div class="flex items-center justify-between mb-2">
           <div class="flex items-center space-x-2 flex-1 min-w-0">
             <img v-if="version.set_icon_svg_uri" :src="version.set_icon_svg_uri" :alt="version.set_name"
-              class="h-5 w-5 flex-shrink-0" />
+              class="h-4 w-4 flex-shrink-0" />
+            <p class="text-xs font-semibold text-gray-900 truncate">
+              {{ version.set_number }}
+            </p>
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold text-gray-900 truncate">
-                {{ version.set_name }}
-              </p>
-              <p class="text-xs text-gray-500">
-                {{ version.set_number.toUpperCase() }}
-              </p>
-            </div>
-          </div>
-          <span :class="getRarityClass(version.rarity)"
-            class="inline-flex px-2 py-1 text-xs font-semibold rounded-full capitalize flex-shrink-0 ml-2">
-            {{ version.rarity.replace('_', ' ') }}
-          </span>
-        </div>
 
-        <!-- Details Grid -->
-        <div class="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-gray-100">
-          <div>
-            <p class="text-xs text-gray-500 mb-1">Card Number</p>
-            <p class="text-sm font-medium text-gray-900">{{ version.card_number }}</p>
+              <p class="text-xs text-gray-500">
+                #{{ version.card_number }}
+              </p>
+
+            </div>
+            <div
+              v-if="version.treatment || version.border_color === 'borderless' || version.frame_effects || version.promo_types"
+              class="flex flex-wrap gap-1">
+              <TreatmentBadge v-if="version.treatment && version.treatment !== 'foil'" :treatment="version.treatment"
+                condensed size="xs" />
+              <TreatmentBadge v-if="version.border_color === 'borderless'" treatment="borderless" condensed size="xs" />
+              <TreatmentBadge v-if="version.frame_effects" :treatment="version.frame_effects" condensed size="xs" />
+              <TreatmentBadge v-if="version.promo_types && version.promo_types !== 'universesbeyond'"
+                :treatment="version.promo_types" condensed size="xs" />
+            </div>
+            <span :class="getRarityClass(version.rarity)"
+              class="inline-flex px-1.5 py-0.5 text-xs font-semibold rounded capitalize">
+              {{ version.rarity.replace('_', ' ') }}
+            </span>
           </div>
-          <div>
-            <p class="text-xs text-gray-500 mb-1">Price</p>
+          <div class="text-right flex-shrink-0 ml-2">
             <p class="text-sm font-semibold text-gray-900">
               <span v-if="version.prices?.usd">
                 ${{ parseFloat(version.prices.usd).toFixed(2) }}
               </span>
-              <span v-else class="text-gray-400">N/A</span>
+              <span v-else class="text-gray-400 text-xs">$---</span>
             </p>
+
           </div>
         </div>
 
-        <!-- Action Button -->
-        <button @click.stop="navigateToVersion(version.id)"
-          class="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors">
-          View Details
-        </button>
+        <!-- Treatments (if any) -->
+
       </div>
     </div>
 
@@ -147,11 +168,16 @@
   import { ref, watch, onMounted } from 'vue'
   import { useRouter } from 'vue-router'
   import api from '@/lib/api'
+  import TreatmentBadge from './TreatmentBadge.vue'
 
   const props = defineProps({
     oracleId: {
       type: String,
       required: true
+    },
+    currentCardId: {
+      type: String,
+      required: false
     }
   })
 

@@ -49,11 +49,132 @@ router.get('/profile/:user_id', async (req, res) => {
       .select('id, display_name, role, rating, total_sales, created_at')
       .eq('id', req.params.user_id)
       .single()
-    
+
     if (error) throw error
     res.json(data)
   } catch (error) {
     console.error('Error fetching public profile:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Get seller profile with stats and listings
+router.get('/seller/:seller_id', async (req, res) => {
+  try {
+    const sellerId = req.params.seller_id
+
+    // Get seller profile info
+    const { data: seller, error: sellerError } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        display_name,
+        rating,
+        created_at,
+        shipping_address
+      `)
+      .eq('id', sellerId)
+      .maybeSingle()
+
+    if (sellerError) throw sellerError
+
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' })
+    }
+
+    // Get seller stats
+    const [completedOrdersRes, activeListingsRes, reviewsRes] = await Promise.all([
+      // Completed sales count - count orders that contain this seller's listings
+      supabase
+        .from('orders')
+        .select(`
+          id,
+          order_items!inner(
+            listing_id,
+            listings!inner(seller_id)
+          )
+        `, { count: 'exact', head: true })
+        .eq('order_items.listings.seller_id', sellerId)
+        .eq('status', 'completed'),
+
+      // Active listings count
+      supabase
+        .from('listings')
+        .select('*', { count: 'exact', head: true })
+        .eq('seller_id', sellerId)
+        .eq('status', 'active'),
+
+      // Reviews
+      supabase
+        .from('seller_reviews')
+        .select('rating, comment, created_at, reviewer:reviewer_id(display_name)')
+        .eq('seller_id', sellerId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+    ])
+
+    // Get active listings with card details
+    const { data: listings, error: listingsError } = await supabase
+      .from('listings')
+      .select(`
+        id,
+        price,
+        condition,
+        quantity,
+        foil,
+        created_at,
+        cards(
+          id,
+          name,
+          set_name,
+          set_number,
+          image_url_small,
+          rarity
+        )
+      `)
+      .eq('seller_id', sellerId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    if (listingsError) throw listingsError
+
+    // Calculate rating breakdown
+    const reviews = reviewsRes.data || []
+    const ratingCounts = {
+      5: reviews.filter(r => r.rating === 5).length,
+      4: reviews.filter(r => r.rating === 4).length,
+      3: reviews.filter(r => r.rating === 3).length,
+      2: reviews.filter(r => r.rating === 2).length,
+      1: reviews.filter(r => r.rating === 1).length
+    }
+
+    const totalReviews = reviews.length
+    const positiveReviews = ratingCounts[5] + ratingCounts[4]
+    const positivePercentage = totalReviews > 0
+      ? ((positiveReviews / totalReviews) * 100).toFixed(1)
+      : 0
+
+    res.json({
+      seller: {
+        id: seller.id,
+        display_name: seller.display_name,
+        rating: seller.rating,
+        created_at: seller.created_at,
+        location: seller.shipping_address?.country || 'Unknown'
+      },
+      stats: {
+        completed_sales: completedOrdersRes.count || 0,
+        active_listings: activeListingsRes.count || 0,
+        total_reviews: totalReviews,
+        positive_percentage: positivePercentage,
+        rating_breakdown: ratingCounts
+      },
+      listings: listings || [],
+      recent_reviews: reviews.slice(0, 10)
+    })
+  } catch (error) {
+    console.error('Error fetching seller profile:', error)
     res.status(500).json({ error: error.message })
   }
 })

@@ -2,7 +2,8 @@ import axios from 'axios'
 import { supabase } from './supabase'
 
 const api = axios.create({
-  baseURL: 'https://mtg-store-api.onrender.com/api'
+ //production baseURL: 'https://mtg-store-api.onrender.com/api'
+ baseURL: 'http://localhost:3000/api'
 })
 
 api.interceptors.request.use(async (config) => {

@@ -70,6 +70,7 @@ router.get('/pending-sellers', async (req, res) => {
 })
 
 // Approve seller
+//TODO: Add "approved" date/time to the database so it can be created. 
 router.patch('/sellers/:id/approve', async (req, res) => {
   try {
     const { data, error } = await supabase

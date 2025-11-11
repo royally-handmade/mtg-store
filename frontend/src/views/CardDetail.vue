@@ -49,9 +49,20 @@
           <h2 class="text-2xl font-bold">{{ card.name }}</h2>
         </div>
 
-        <TreatmentBadge v-if="displayedCard.border_color == 'borderless'" :treatment="displayedCard.border_color" />
-        <TreatmentBadge v-if="displayedCard.frame_effects" :treatment="displayedCard.frame_effects" />
-        <TreatmentBadge v-if="displayedCard.promo_types" :treatment="displayedCard.promo_types" />
+        <!-- Treatment Badges Section - Combined into one component call -->
+        <div class="flex flex-wrap gap-2">
+          <!-- Card Treatment (foil, etched, etc.) -->
+          <TreatmentBadge v-if="displayedCard.treatment && displayedCard.treatment !== 'foil'" :treatment="displayedCard.treatment" />
+          
+          <!-- Border Treatment (borderless) -->
+          <TreatmentBadge v-if="displayedCard.border_color === 'borderless'" treatment="borderless" />
+          
+          <!-- Frame Effects (showcase, extended-art, etc.) -->
+          <TreatmentBadge v-if="displayedCard.frame_effects" :treatment="displayedCard.frame_effects" />
+          
+          <!-- Promo Types -->
+          <TreatmentBadge v-if="displayedCard.promo_types && displayedCard.promo_types !== 'universesbeyond'" :treatment="displayedCard.promo_types" />
+        </div>
 
         <!-- Enhanced Card Details Grid -->
 
@@ -107,7 +118,7 @@
           <div class="grid grid-cols-2 p-2">
             <div v-if="displayedCard.released_at" class="text-xs font-mono"><strong>Released:</strong> {{
               formatDate(displayedCard.released_at)
-              }}
+            }}
             </div>
             <div v-if="displayedCard.artist" class="text-xs font-mono"><strong>Artist:</strong> {{
               displayedCard.artist }}
@@ -119,11 +130,40 @@
           <WishlistButton :card-id="displayedCard.id" />
         </div>
 
+        <!-- Cheapest Listing Section -->
+        <div v-if="cheapestListing" class="mt-4">
+          <CardListing
+            :listing="cheapestListing"
+            :is-cheapest="true"
+            :adding-to-cart="addingToCart"
+            :was-recently-added="wasRecentlyAdded(cheapestListing.id)"
+            :is-in-cart="isListingInCart(cheapestListing)"
+            :is-authenticated="authStore.isAuthenticated"
+            :is-own-listing="cheapestListing.seller_id === authStore.user?.id"
+            :disabled="isAddToCartDisabled(cheapestListing)"
+            :shipping-cost="calculateShippingCost(cheapestListing)"
+            @add-to-cart="addToCartWithQuantity"
+          />
+        </div>
+
+        <!-- View Other Listings Button -->
+        <div v-if="otherListings.length > 0" class="mt-3">
+          <button
+            @click="scrollToListings"
+            class="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-300 text-sm font-medium text-gray-700"
+          >
+            View {{ otherListings.length }} Other Listing{{ otherListings.length !== 1 ? 's' : '' }}
+            <span v-if="otherListings.length > 0" class="ml-2 text-gray-600">
+              (from ${{ Math.min(...otherListings.map(l => l.price)).toFixed(2) }})
+            </span>
+          </button>
+        </div>
+
         <div v-if="card && card.oracle_id">
           <CardVersions :oracle-id="card.oracle_id" :current-card-id="card.id" />
         </div>
         <!-- Wishlist Button -->
-        
+
 
         <!-- Enhanced Price Comparison -->
         <div class="bg-gray-100 p-4 rounded" style="display:none;">
@@ -200,10 +240,13 @@
 
     </div>
 
-    <div>
-      <div class="bg-white rounded-lg shadow p-6">
+    <div class="space-y-6">
+      <!-- All Listings Section -->
+      <div id="all-listings" class="bg-gray-50 rounded-lg shadow p-6">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold">Current Listings</h2>
+          <h2 class="text-xl font-bold">
+            {{ cheapestListing ? 'Other Listings' : 'Current Listings' }}
+          </h2>
 
           <!-- Create Listing Button for Sellers -->
           <div class="flex items-center space-x-2">
@@ -259,89 +302,33 @@
           <p class="text-red-600 text-sm">{{ listingError }}</p>
         </div>
 
-
-        <!-- Enhanced Listings Display -->
-        <div v-for="listing in filteredAndSortedListings" :key="listing.id"
-          class="bg-gray-50 rounded p-4 hover:bg-gray-100 transition-colors">
-          <div class="flex justify-between">
-            <div class="flex-1">
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-lg font-semibold text-green-600">
-                  ${{ listing.price }} CAD
-                </div>
-                <div class="flex items-center text-sm text-gray-600">
-                  <span class="px-2 py-1 rounded text-xs font-medium" :class="getConditionColor(listing.condition)">
-                    {{ listing.condition.replace('_', ' ').toUpperCase() }}
-                  </span>
-                  <span v-if="listing.foil"
-                    class="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
-                    FOIL
-                  </span>
-                  <span v-if="listing.signed"
-                    class="ml-2 px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                    SIGNED
-                  </span>
-                </div>
-              </div>
-
-              <div class="flex items-center text-sm text-gray-600 mb-1">
-                <router-link :to="`/seller/${listing.seller_id}`" class="font-medium text-blue-600 hover:text-blue-800">
-                  {{ listing.profiles?.display_name || 'Unknown Seller' }}
-                </router-link>
-                <span class="text-yellow-500 ml-1">
-                  ★ {{ listing.profiles?.rating || 'New' }}
-                </span>
-                <span class="ml-2 text-gray-400">•</span>
-                <span class="ml-2">
-                  Ships from {{ listing.profiles?.shipping_address?.country || 'Canada' }}
-                </span>
-              </div>
-
-              <div class="flex items-center gap-4 text-xs text-gray-500">
-                <span>Qty: {{ listing.quantity }}</span>
-                <span v-if="listing.created_at">Listed {{ timeAgo(listing.created_at) }}</span>
-                <span v-if="listing.language && listing.language !== 'en'" class="px-1 py-0.5 bg-gray-100 rounded">
-                  {{ listing.language.toUpperCase() }}
-                </span>
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-2 ml-4">
-              <button @click="addToCart(listing)" :disabled="isAddToCartDisabled(listing)"
-                :class="getAddToCartButtonClass(listing)">
-                <span class="flex items-center gap-1">
-                  <svg v-if="addingToCart" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
-                  </svg>
-                  <svg v-else-if="wasRecentlyAdded(listing.id)" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clip-rule="evenodd" />
-                  </svg>
-                  <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13h10m-10 0l-1.5 6m1.5-6h10m0 0l1.5 6" />
-                  </svg>
-                  {{ getAddToCartButtonText(listing) }}
-                </span>
-              </button>
-            </div>
-          </div>
+        <!-- Display listings (other listings if cheapest exists, all listings otherwise) -->
+        <div class="space-y-2 md:space-y-3">
+          <CardListing
+            v-for="listing in (cheapestListing ? otherListings : filteredAndSortedListings)"
+            :key="listing.id"
+            :listing="listing"
+            :is-cheapest="false"
+            :adding-to-cart="addingToCart"
+            :was-recently-added="wasRecentlyAdded(listing.id)"
+            :is-in-cart="isListingInCart(listing)"
+            :is-authenticated="authStore.isAuthenticated"
+            :is-own-listing="listing.seller_id === authStore.user?.id"
+            :disabled="isAddToCartDisabled(listing)"
+            :shipping-cost="calculateShippingCost(listing)"
+            @add-to-cart="addToCartWithQuantity"
+          />
         </div>
 
         <!-- Show message for seller's own listings -->
-        <div v-if="filteredAndSortedListings.length === 0 && listings.some(l => l.seller_id === authStore.user?.id)"
+        <div v-if="(cheapestListing ? otherListings : filteredAndSortedListings).length === 0 && listings.some(l => l.seller_id === authStore.user?.id)"
           class="text-center py-4 text-gray-500">
           <div class="text-lg mb-2">This is your listing</div>
           <div class="text-sm">You cannot purchase your own cards</div>
         </div>
 
         <!-- Show message when no listings match filters -->
-        <div v-else-if="filteredAndSortedListings.length === 0 && listings.length > 0"
+        <div v-else-if="(cheapestListing ? otherListings : filteredAndSortedListings).length === 0 && listings.length > 0"
           class="text-center py-4 text-gray-500">
           No listings match your filters
         </div>
@@ -363,7 +350,7 @@
 
 <script setup>
   import { ref, onMounted, computed, watch } from 'vue'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import { useCartStore } from '@/stores/cart'
   import { useToast } from 'vue-toastification'
@@ -377,9 +364,11 @@
   import ManaCostInText from '../components/ManaCostInText.vue'
   import CardVersions from '@/components/CardVersions.vue'
   import SetIcon from '@/components/SetIcon.vue'
+  import CardListing from '@/components/CardListing.vue'
 
 
   const route = useRoute()
+  const router = useRouter()
   const authStore = useAuthStore()
 
   // Original reactive data
@@ -442,6 +431,31 @@
 
   const uniqueSellers = computed(() => {
     return new Set(listings.value.map(l => l.seller_id)).size
+  })
+
+  // Get the cheapest listing (always show, including user's own listings)
+  const cheapestListing = computed(() => {
+    if (listings.value.length === 0) return null
+
+    const availableListings = listings.value.filter(listing =>
+      listing.status === 'active' &&
+      listing.quantity > 0
+    )
+
+    if (availableListings.length === 0) return null
+
+    return availableListings.reduce((cheapest, current) =>
+      current.price < cheapest.price ? current : cheapest
+    )
+  })
+
+  // Get other listings (excluding the cheapest)
+  const otherListings = computed(() => {
+    if (!cheapestListing.value) return filteredAndSortedListings.value
+
+    return filteredAndSortedListings.value.filter(
+      listing => listing.id !== cheapestListing.value.id
+    )
   })
 
   // New computed properties for card faces
@@ -582,36 +596,12 @@
     return new Date(dateString).toLocaleDateString()
   }
 
-  const timeAgo = (dateString) => {
-    const now = new Date()
-    const date = new Date(dateString)
-    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60))
-
-    if (diffInHours < 1) return 'less than an hour ago'
-    if (diffInHours < 24) return `${diffInHours} hours ago`
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)} days ago`
-    return `${Math.floor(diffInHours / 168)} weeks ago`
-  }
-
-  const getConditionColor = (condition) => {
-    const colors = {
-      near_mint: 'bg-green-100 text-green-800',
-      nm: 'bg-green-100 text-green-800',
-      lightly_played: 'bg-blue-100 text-blue-800',
-      moderately_played: 'bg-yellow-100 text-yellow-800',
-      heavily_played: 'bg-orange-100 text-orange-800',
-      damaged: 'bg-red-100 text-red-800'
-    }
-    return colors[condition] || 'bg-gray-100 text-gray-800'
-  }
-
-
   const cartStore = useCartStore()
   const toast = useToast()
   const addingToCart = ref(false)
   const addedToCart = ref(new Set()) // Track which listings were added
 
-  const addToCart = async (listing) => {
+  const addToCartWithQuantity = async ({ listing, quantity }) => {
     // Check if user is authenticated
     if (!authStore.isAuthenticated) {
       toast.error('Please sign in to add items to cart')
@@ -640,10 +630,10 @@
     addingToCart.value = true
 
     try {
-      await cartStore.addItem(listing.id, 1)
+      await cartStore.addItem(listing.id, quantity)
       addedToCart.value.add(listing.id)
 
-      toast.success(`Added ${listing.cards?.name || 'card'} to cart`, {
+      toast.success(`Added ${quantity}x ${listing.cards?.name || 'card'} to cart`, {
         timeout: 3000,
         icon: '🛒'
       })
@@ -667,43 +657,20 @@
       addingToCart.value = false
     }
   }
+
   // Helper function to check if a listing was recently added
   const wasRecentlyAdded = (listingId) => {
     return addedToCart.value.has(listingId)
   }
 
-  // Update the button text and styling based on cart state
-  const getAddToCartButtonText = (listing) => {
-    if (addingToCart.value) return 'Adding...'
-    if (wasRecentlyAdded(listing.id)) return 'Added!'
-    if (isListingInCart.value(listing)) return 'In Cart'
-    return 'Add to Cart'
-  }
-
-  const getAddToCartButtonClass = (listing) => {
-    const baseClasses = 'px-4 py-2 rounded text-sm transition-colors font-medium'
-
-    if (addingToCart.value) {
-      return `${baseClasses} bg-gray-400 text-white cursor-not-allowed`
+  // Calculate shipping cost based on listing/seller location
+  const calculateShippingCost = (listing) => {
+    // Free shipping for listings over $50
+    if (listing.price >= 50) {
+      return 0
     }
-
-    if (wasRecentlyAdded(listing.id)) {
-      return `${baseClasses} bg-green-600 text-white`
-    }
-
-    if (isListingInCart.value(listing)) {
-      return `${baseClasses} bg-blue-600 text-white cursor-not-allowed`
-    }
-
-    if (listing.seller_id === authStore.user?.id) {
-      return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
-    }
-
-    if (listing.quantity <= 0 || listing.status !== 'active') {
-      return `${baseClasses} bg-gray-300 text-gray-500 cursor-not-allowed`
-    }
-
-    return `${baseClasses} bg-green-600 text-white hover:bg-green-700`
+    // Standard shipping cost
+    return 5.00
   }
 
   // Function to check if button should be disabled
@@ -715,9 +682,13 @@
       listing.status !== 'active'
   }
 
-  const addToWishlist = (listing) => {
-    // Add to wishlist with price watching
-    console.log('Adding to wishlist:', listing)
+
+  // Scroll to the all listings section
+  const scrollToListings = () => {
+    const listingsSection = document.getElementById('all-listings')
+    if (listingsSection) {
+      listingsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 
   // Enhanced listing creation handler
@@ -780,6 +751,24 @@
       }
     }
   }, { immediate: true })
+
+  // Watch for route parameter changes to refetch data when navigating between card versions
+  watch(() => route.params.id, async (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      // Reset state
+      card.value = null
+      listings.value = []
+      displayedCard.value = null
+      selectedFaceIndex.value = 0
+      addedToCart.value.clear()
+
+      // Fetch new card data
+      await fetchCard()
+      await fetchListings()
+      await fetchPriceHistory()
+      await fetchExternalPrices()
+    }
+  })
 
   onMounted(async () => {
     await fetchCard()

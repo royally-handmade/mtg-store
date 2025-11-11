@@ -18,8 +18,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://mtg-store-api.onrender.com',
-        changeOrigin: true
+     //production   
+     target: 'https://mtg-store-api.onrender.com',
+     changeOrigin: true
       }
     }
   }

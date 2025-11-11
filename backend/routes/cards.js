@@ -1041,7 +1041,8 @@ router.get('/versions/:oracle_id', async (req, res) => {
         nonfoil,
         released_at,
         border_color,
-        frame,
+        frame_effects,
+        promo_types,
         artist,
         prices,
         listings (
@@ -1065,9 +1066,10 @@ router.get('/versions/:oracle_id', async (req, res) => {
       query = query.gt('listings.quantity', 0)
     }
 
-    // Apply pagination
+    // Apply pagination with proper sorting
     query = query
       .order('released_at', { ascending: false })
+      .order('card_number', { ascending: true })
       .range(offset, offset + limit - 1)
 
     const { data: cards, count, error } = await query
@@ -1101,7 +1103,8 @@ router.get('/versions/:oracle_id', async (req, res) => {
           nonfoil: card.nonfoil,
           released_at: card.released_at,
           border_color: card.border_color,
-          frame: card.frame,
+          frame_effects: card.frame_effects,
+          promo_types: card.promo_types,
           artist: card.artist,
           prices: card.prices,
           listings: [card.listings]
@@ -1141,7 +1144,8 @@ router.get('/versions/:oracle_id', async (req, res) => {
         foil_market_price: lowestFoilPrice,
         released_at: card.released_at,
         border_color: card.border_color,
-        frame: card.frame,
+        frame_effects: card.frame_effects,
+        promo_types: card.promo_types,
         artist: card.artist,
         prices: card.prices,
         
@@ -1167,21 +1171,18 @@ router.get('/versions/:oracle_id', async (req, res) => {
       }
     })
 
-    // Sort by relevance (newest first, then by availability)
+    // Sort by release date (newest first), then by card number (smallest first)
     enrichedCards.sort((a, b) => {
-      // First sort by whether they have listings available
-      if (a.total_quantity > 0 && b.total_quantity === 0) return -1
-      if (a.total_quantity === 0 && b.total_quantity > 0) return 1
-      
-      // Then by release date (newest first)
+      // First sort by release date (newest first)
       if (a.released_at && b.released_at) {
-        return new Date(b.released_at) - new Date(a.released_at)
+        const dateComparison = new Date(b.released_at) - new Date(a.released_at)
+        if (dateComparison !== 0) return dateComparison
       }
-      
-      // Finally by price (lowest first)
-      const aPrice = a.market_price || 999999
-      const bPrice = b.market_price || 999999
-      return aPrice - bPrice
+
+      // Then by card number (smallest to largest)
+      const aCardNum = a.card_number ? parseInt(a.card_number) : 999999
+      const bCardNum = b.card_number ? parseInt(b.card_number) : 999999
+      return aCardNum - bCardNum
     })
 
     res.json({

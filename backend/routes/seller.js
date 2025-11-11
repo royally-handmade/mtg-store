@@ -1202,15 +1202,15 @@ router.get('/sellers', async (req, res) => {
       order = 'desc',
       search
     } = req.query
-
     let query = supabase
       .from('profiles')
+      //average rating should be a column on the sellers table that is updated everytime a new review is placed. A db trigger needs to be created to manage that. 
+      // _avg_rating:seller_reviews!seller_reviews_seller_id_fkey1(rating.avg())
       .select(`
         *,
         seller_settings(business_name, business_type, payout_method),
         _count_listings:listings(count),
-        _count_orders:orders(count),
-        _avg_rating:seller_reviews(rating.avg())
+        _count_orders:orders(count)
       `, { count: 'exact' })
       .eq('role', 'seller')
 
@@ -1258,7 +1258,7 @@ router.post('/sellers/:id/suspend', async (req, res) => {
     const { reason, duration_days } = req.body
 
     if (!reason) {
-      return res.status(400).json({ error: 'Suspension reason is required' })
+      return res.status(400).json({ error: 'Suspension reason is required' }) 
     }
 
     const suspendedUntil = duration_days 

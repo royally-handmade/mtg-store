@@ -17,10 +17,7 @@
       <p class="text-sm text-gray-600 mb-2">{{ card.set_number.toUpperCase() }} • {{ card.rarity.toUpperCase() }}</p>
       <div class="flex justify-between items-center">
         <span v-if="card.market_price" class="text-md font-bold text-green-600">
-          Listing Price ${{ card.market_price }} CAD
-        </span>
-        <span v-if="card.prices?.usd" class="text-md text-green-800">
-          Market Price ${{ card.prices?.usd }} USD
+          ${{ card.market_price }} CAD
         </span>
         <!-- <button
           @click.stop="quickAddToCart"

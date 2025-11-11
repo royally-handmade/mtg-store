@@ -82,6 +82,8 @@ const fetchCards = async () => {
   try {
     const response = await api.get('/cards')
     cards.value = response.data
+
+    cards.value.sort((a,b) => a-b)
     
     // Extract unique sets
     sets.value = [...new Set(cards.value.map(card => card.set_number))]

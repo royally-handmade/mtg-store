@@ -31,7 +31,7 @@ router.post('/import-card', authenticateAdmin, async (req, res) => {
     const scryfallCard = result.data?.id ? result.data : result.data[0]
     const transformedCard = scryfallService.transformCardData(scryfallCard)
 
-    console.log(transformedCard)
+    console.log(scryfallCard)
 
     // Check if card already exists
     const { data: existingCard } = await supabase
@@ -94,6 +94,8 @@ router.post('/import-set', authenticateAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Set not found on Scryfall' })
     }
 
+    console.log('set found')
+
     const setInfo = setResult.data
     let importedCount = 0
     let updatedCount = 0
@@ -114,7 +116,7 @@ router.post('/import-set', authenticateAdmin, async (req, res) => {
 
     while (hasMore) {
       try {
-        const cardsResult = await scryfallService.getCardsFromSet(set_code, page)
+        const cardsResult = await scryfallService.getSetCards(set_code, page)
         if (!cardsResult.success) break
 
         const batch = []
@@ -127,6 +129,8 @@ router.post('/import-set', authenticateAdmin, async (req, res) => {
             errorCount++
           }
         }
+
+        console.log('page processing')
 
         // Batch upsert cards
         if (batch.length > 0) {
@@ -181,6 +185,8 @@ router.post('/import-set', authenticateAdmin, async (req, res) => {
       errors: errorCount,
       set: setInfo.name
     }) + '\n')
+    
+    console.log('done')
 
     res.end()
 

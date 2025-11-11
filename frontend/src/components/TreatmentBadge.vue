@@ -1,16 +1,20 @@
 <template>
-  <span 
-    v-if="treatment && treatment !== 'normal'"
-    :class="badgeClasses"
-    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide"
-  >
-    <component 
-      v-if="badgeIcon" 
-      :is="badgeIcon" 
-      class="w-3 h-3 mr-1" 
-    />
-    {{ displayText }}
-  </span>
+  <div class="inline-flex items-center gap-1 flex-wrap">
+    <span
+      v-for="(singleTreatment, index) in filteredTreatments"
+      :key="index"
+      :class="getBadgeClasses(singleTreatment)"
+      :title="condensed ? getDisplayText(singleTreatment) : undefined"
+      class="inline-flex items-center rounded-full font-medium uppercase tracking-wide"
+    >
+      <component
+        v-if="getBadgeIcon(singleTreatment)"
+        :is="getBadgeIcon(singleTreatment)"
+        :class="condensed ? 'w-3 h-3' : 'w-3 h-3 mr-1'"
+      />
+      <span v-if="!condensed">{{ getDisplayText(singleTreatment) }}</span>
+    </span>
+  </div>
 </template>
 
 <script setup>
@@ -31,6 +35,10 @@ const props = defineProps({
     type: String,
     default: 'sm',
     validator: (value) => ['xs', 'sm', 'md', 'lg'].includes(value)
+  },
+  condensed: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -85,19 +93,52 @@ const treatmentConfig = {
   }
 }
 
-const config = computed(() => {
-  return treatmentConfig[props.treatment?.toLowerCase()] || {
-    text: props.treatment,
+/**
+ * Split comma-separated treatments, trim whitespace, and filter out invalid values
+ * This computed property handles all filtering, so the template can be simpler
+ */
+const filteredTreatments = computed(() => {
+  if (!props.treatment) return []
+  
+  return props.treatment
+  .replace('-',' ')
+    .split(',')
+    .map(t => t.trim())
+    .filter(t => {
+      // Filter out empty strings and 'normal' treatment
+      return t.length > 0 && t.toLowerCase() !== 'normal' && t.toLocaleLowerCase() !== 'foil'
+    })
+})
+
+// Get config for a specific treatment
+const getConfig = (treatment) => {
+  return treatmentConfig[treatment?.toLowerCase()] || {
+    text: treatment,
     bgColor: 'bg-gradient-to-r from-yellow-400 to-yellow-600',
     textColor: 'text-white',
     icon: SparklesIcon
   }
-})
+}
 
-const displayText = computed(() => config.value.text)
-const badgeIcon = computed(() => config.value.icon)
+const getDisplayText = (treatment) => {
+  return getConfig(treatment).text
+}
+
+const getBadgeIcon = (treatment) => {
+  return getConfig(treatment).icon
+}
 
 const sizeClasses = computed(() => {
+  if (props.condensed) {
+    const condensedSizes = {
+      xs: 'p-1',
+      sm: 'p-1',
+      md: 'p-1.5',
+      lg: 'p-2'
+    }
+    return condensedSizes[props.size]
+  }
+
   const sizes = {
     xs: 'px-2 py-0.5 text-xs',
     sm: 'px-2.5 py-0.5 text-xs',
@@ -107,15 +148,16 @@ const sizeClasses = computed(() => {
   return sizes[props.size]
 })
 
-const badgeClasses = computed(() => {
+const getBadgeClasses = (treatment) => {
+  const config = getConfig(treatment)
   return [
-    config.value.bgColor,
-    config.value.textColor,
+    config.bgColor,
+    config.textColor,
     sizeClasses.value,
     'shadow-sm',
     'border border-opacity-20 border-white'
   ].join(' ')
-})
+}
 </script>
 
 <style scoped>
