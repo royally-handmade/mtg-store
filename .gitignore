@@ -138,3 +138,11 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Local Netlify folder
 .netlify
+
+# Claude Settings
+CLAUDE.md
+.frontend/src/views/CLAUDE.md
+.frontend/src/components/CLAUDE.md
+
+#MCP
+.playwright-mcp
