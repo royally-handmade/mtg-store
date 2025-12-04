@@ -38,7 +38,7 @@
           View All →
         </router-link>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
         <CardPreview v-for="card in featuredCards" :key="card.id" :card="card" />
       </div>
     </section>
@@ -167,7 +167,7 @@ const stats = ref({
 const fetchHomeData = async () => {
   try {
     const [cardsRes] = await Promise.all([
-      api.get('/cards?limit=8'),
+      api.get('/cards?limit=12'),
     ])
 
     featuredCards.value = cardsRes.data
