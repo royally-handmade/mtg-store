@@ -1,11 +1,11 @@
 import express from 'express'
 import { supabase } from '../server.js'
 import { authenticateUser } from '../middleware/auth.js'
-import { 
-  sendAccountSecurityAlert, 
+import {
+  sendAccountSecurityAlert,
   sendEmailPreferencesUpdate,
-  sendAccountDeletionConfirmation 
-} from '../services/emailService.js'
+  sendAccountDeletionConfirmation
+} from '../services/emailServiceMailgun.js'
 import { validateUpdateProfile, validatePasswordChange } from '../middleware/validation.js'
 
 const router = express.Router()

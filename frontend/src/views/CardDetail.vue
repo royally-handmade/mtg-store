@@ -365,6 +365,7 @@
   import CardVersions from '@/components/CardVersions.vue'
   import SetIcon from '@/components/SetIcon.vue'
   import CardListing from '@/components/CardListing.vue'
+  import { useCardSeo } from '@/composables/useSeo'
 
 
   const route = useRoute()
@@ -732,6 +733,22 @@
     listingError.value = error.message || 'Failed to create listing'
     console.error('Listing creation error:', error)
   }
+
+  // Enhanced card data for SEO
+  const cardForSeo = computed(() => {
+    if (!card.value || !displayedCard.value) return null
+
+    return {
+      ...displayedCard.value,
+      lowest_price: cheapestListing.value?.price,
+      highest_price: listings.value.length > 0 ? Math.max(...listings.value.map(l => l.price)) : null,
+      listing_count: listings.value.length,
+      in_stock: listings.value.some(l => l.status === 'active' && l.quantity > 0)
+    }
+  })
+
+  // Apply SEO meta tags
+  useCardSeo(cardForSeo)
 
   // Watch for changes to the main card data and initialize the displayed card
   watch(card, (newCard) => {

@@ -1,21 +1,26 @@
-// services/emailService.js
+// services/emailService.js - Enhanced with Mailgun integration
 import nodemailer from 'nodemailer'
 import dotenv from 'dotenv'
+import mailgunService, { TEMPLATES, USER_ROLES } from './mailgunService.js'
 
 dotenv.config()
 
-// ===== EMAIL TRANSPORTER CONFIGURATION =====
+// ===== CONFIGURATION =====
 
+// Determine which email service to use
+const USE_MAILGUN = !!(process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN)
+
+// Legacy SMTP transporter (fallback)
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+  secure: process.env.SMTP_SECURE === 'true',
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
   },
   tls: {
-    rejectUnauthorized: false // Allow self-signed certificates
+    rejectUnauthorized: false
   }
 })
 
@@ -23,9 +28,24 @@ const transporter = nodemailer.createTransport({
 
 const verifyEmailConfig = async () => {
   try {
-    await transporter.verify()
-    console.log('✅ Email service is ready to send messages')
-    return true
+    if (USE_MAILGUN) {
+      const isValid = await mailgunService.verifyMailgunConfig()
+      if (isValid) {
+        console.log('✅ Using Mailgun for email delivery')
+        return true
+      }
+      console.warn('⚠️ Mailgun validation failed, falling back to SMTP')
+    }
+
+    // Try SMTP fallback
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      await transporter.verify()
+      console.log('✅ Email service is ready (using SMTP)')
+      return true
+    }
+
+    console.error('❌ No email service configured')
+    return false
   } catch (error) {
     console.error('❌ Email service configuration error:', error.message)
     return false
@@ -34,6 +54,8 @@ const verifyEmailConfig = async () => {
 
 // Verify on startup
 verifyEmailConfig()
+
+export { verifyEmailConfig }
 
 // ===== BASE EMAIL SENDING FUNCTION =====
 
@@ -312,32 +334,54 @@ const getBaseEmailTemplate = (content, title = 'MTG Marketplace') => {
 
 // ===== PASSWORD RESET EMAIL =====
 
-export const sendPasswordResetEmail = async (email, displayName) => {
+export const sendPasswordResetEmail = async (email, displayName, resetToken = null) => {
+  if (USE_MAILGUN) {
+    // Use Mailgun template
+    const resetUrl = resetToken
+      ? `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
+      : `${process.env.FRONTEND_URL}/reset-password`
+
+    return await mailgunService.sendTemplatedEmail(
+      email,
+      TEMPLATES.PASSWORD_RESET,
+      {
+        user_name: displayName || 'there',
+        reset_url: resetUrl,
+        expiry_time: '1 hour'
+      },
+      {
+        subject: '🔐 Password Reset Request - MTG Marketplace',
+        tags: ['password-reset', 'security']
+      }
+    )
+  }
+
+  // Fallback to legacy HTML email
   const content = `
     <h2>🔐 Password Reset Request</h2>
-    
+
     <p>Hi <strong>${displayName || 'there'}</strong>,</p>
-    
+
     <p>We received a request to reset your password for your MTG Marketplace account. If you didn't make this request, you can safely ignore this email.</p>
-    
+
     <div class="alert alert-info">
       <strong>🛡️ Security Notice:</strong><br>
       This reset link will expire in <strong>1 hour</strong> for your security. If you need a new reset link, please request another one from our website.
     </div>
-    
+
     <p>Click the button below to reset your password:</p>
-    
+
     <div style="text-align: center; margin: 30px 0;">
       <a href="${process.env.FRONTEND_URL}/reset-password" class="button">
         🔑 Reset My Password
       </a>
     </div>
-    
+
     <p>If you're having trouble clicking the button, you can copy and paste this link into your browser:</p>
     <p style="word-break: break-all; color: #3b82f6; font-family: monospace; background: #f3f4f6; padding: 10px; border-radius: 4px;">
       ${process.env.FRONTEND_URL}/reset-password
     </p>
-    
+
     <div class="details-box">
       <p><strong>For your security, we recommend:</strong></p>
       <ul>
@@ -347,16 +391,16 @@ export const sendPasswordResetEmail = async (email, displayName) => {
         <li>Not sharing your account credentials with anyone</li>
       </ul>
     </div>
-    
+
     <p>If you continue to have trouble accessing your account, please don't hesitate to contact our support team at <a href="mailto:support@mtgmarketplace.com">support@mtgmarketplace.com</a>.</p>
-    
+
     <p>Best regards,<br>
     <strong>The MTG Marketplace Team</strong></p>
   `
-  
+
   return await sendEmail(
-    email, 
-    '🔐 Password Reset Request - MTG Marketplace', 
+    email,
+    '🔐 Password Reset Request - MTG Marketplace',
     getBaseEmailTemplate(content, 'Password Reset - MTG Marketplace')
   )
 }

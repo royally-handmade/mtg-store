@@ -4,7 +4,25 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MTG Marketplace</title>
+
+    <!-- Base meta tags (will be overridden by useHead in components) -->
+    <title>MTG Marketplace - Buy and Sell Magic: The Gathering Cards</title>
+    <meta name="description" content="Buy and sell Magic: The Gathering cards on MTG Marketplace. Browse thousands of singles, connect with trusted sellers, and find the best prices." />
+    <meta name="keywords" content="MTG, Magic The Gathering, cards, marketplace, buy cards, sell cards, trading cards" />
+
+    <!-- Open Graph meta tags -->
+    <meta property="og:site_name" content="MTG Marketplace" />
+    <meta property="og:type" content="website" />
+
+    <!-- Preconnect to external domains for performance -->
+    <link rel="preconnect" href="https://mtg-store-api.onrender.com" />
+    <link rel="dns-prefetch" href="https://mtg-store-api.onrender.com" />
+
+    <!-- Robots meta tag -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#dc2626" />
   </head>
   <body class="w-screen max-w-full" style="overflow-x: hidden;">
     <div id="app" class="w-screen"></div>

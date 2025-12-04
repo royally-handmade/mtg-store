@@ -1,5 +1,5 @@
 import { supabase } from '../server.js'
-import { sendPriceAlert } from './emailService.js'
+import { sendPriceAlert } from './emailServiceMailgun.js'
 import cron from 'node-cron'
 
 class PriceMonitoringService {

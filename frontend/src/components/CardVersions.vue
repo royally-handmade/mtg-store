@@ -237,10 +237,10 @@
 
   const getRarityClass = (rarity) => {
     const rarityClasses = {
-      common: 'bg-gray-100 text-gray-800',
-      uncommon: 'bg-green-100 text-green-800',
-      rare: 'bg-yellow-100 text-yellow-800',
-      mythic: 'bg-red-100 text-red-800',
+      common: 'bg-gray-100 text-black',
+      uncommon: 'bg-slate-300 text-slate-800',
+      rare: 'bg-amber-200 text-amber-900',
+      mythic: 'bg-orange-200 text-orange-900',
       mythic_rare: 'bg-red-100 text-red-800',
       special: 'bg-purple-100 text-purple-800'
     }

@@ -1281,4 +1281,30 @@ router.get('/versions/:oracle_id/basic', async (req, res) => {
   }
 })
 
+// Get all card IDs for sitemap/prerendering
+router.get('/all-ids', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('id, name, set_number, updated_at')
+      .order('id', { ascending: true })
+
+    if (error) throw error
+
+    res.json({
+      data: data.map(card => ({
+        id: card.id,
+        name: card.name,
+        set_number: card.set_number,
+        slug: `${card.id}-${card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        updated_at: card.updated_at
+      })),
+      count: data.length
+    })
+  } catch (error) {
+    console.error('Error fetching card IDs:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
 export default router

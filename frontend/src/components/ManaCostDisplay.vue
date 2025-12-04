@@ -28,6 +28,7 @@
 
 <script setup>
 import { computed, defineProps } from 'vue'
+import symbolsData from '../symbols.json'
 
 const props = defineProps({
   manaCost: {
@@ -45,6 +46,14 @@ const props = defineProps({
     default: '/assets/mana-symbols/'
   }
 })
+
+// Create a lookup map for symbol to SVG URI
+const symbolMap = new Map(
+  symbolsData.data.map(item => [
+    item.symbol.replace(/[{}]/g, ''), // Remove braces from symbol
+    item.svg_uri
+  ])
+)
 
 // Parse mana cost string like "{2}{R}{W}" into individual symbols
 const manaSymbols = computed(() => {
@@ -121,21 +130,14 @@ const getSymbolTooltip = (symbol) => {
   return `${symbol} mana`
 }
 
-// Check if SVG file exists (you can modify this logic)
+// Check if SVG file exists using the symbol map
 const hasSvgFile = (symbol) => {
-  // For now, assume no SVGs are available
-  // You can update this once you have the files
-  return false
-  
-  // Example logic for when you have SVGs:
-  // return ['W', 'U', 'B', 'R', 'G', 'C', 'X', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20'].includes(symbol)
+  return symbolMap.has(symbol)
 }
 
-// Generate SVG file path
+// Get SVG URL from the symbol map
 const getSvgPath = (symbol) => {
-  // Normalize symbol for filename
-  const filename = symbol.toLowerCase().replace('/', '')
-  return `${props.svgBasePath}${filename}.svg`
+  return symbolMap.get(symbol) || ''
 }
 
 // Fallback colors for text display

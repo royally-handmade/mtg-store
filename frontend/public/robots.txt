@@ -1,0 +1,19 @@
+# robots.txt for MTG Marketplace
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /seller-dashboard
+Disallow: /checkout
+Disallow: /cart
+Disallow: /profile
+Disallow: /orders
+Disallow: /auth
+Disallow: /reset-password
+
+# Sitemap location (update with your actual domain)
+Sitemap: https://yourdomain.com/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1

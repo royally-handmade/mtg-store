@@ -3,7 +3,7 @@
 
 import { supabase } from '../server.js'
 import helcimService from './helcimService.js'
-import emailService from './emailService.js'
+import emailService from './emailServiceMailgun.js'
 
 class PaymentRecoveryService {
   

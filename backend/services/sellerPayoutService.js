@@ -2,21 +2,11 @@
 
 import { supabase } from '../server.js'
 import helcimService from './helcimService.js'
-import nodemailer from 'nodemailer'
+import { sendSellerPayoutNotification, sendAdminSystemAlert } from './emailServiceMailgun.js'
 import cron from 'node-cron'
 
 class SellerPayoutService {
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    })
-
     // Initialize automated payout schedule
     this.initializePayoutSchedule()
   }
@@ -639,31 +629,21 @@ class SellerPayoutService {
    */
   async sendPayoutNotification(seller, payout, payoutResult) {
     try {
-      const emailHtml = `
-        <h2>Payout Processed - MTG Marketplace</h2>
-        <p>Hi ${seller.display_name},</p>
-        <p>Your seller payout has been processed successfully!</p>
-        
-        <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <h3>Payout Details</h3>
-          <p><strong>Amount:</strong> ${payout.amount} CAD</p>
-          <p><strong>Method:</strong> ${payout.payout_method}</p>
-          <p><strong>Reference:</strong> ${payoutResult.reference}</p>
-          <p><strong>Estimated Arrival:</strong> ${payoutResult.processingTime}</p>
-        </div>
-        
-        <p>The funds should appear in your account within ${payoutResult.processingTime}.</p>
-        <p>You can view your payout history in your seller dashboard.</p>
-        
-        <p>Thank you for being part of the MTG Marketplace community!</p>
-      `
+      const earnings = await this.calculateSellerEarnings(seller.id, payout.period_start, payout.period_end)
 
-      await this.transporter.sendMail({
-        from: process.env.FROM_EMAIL,
-        to: seller.email,
-        subject: 'Payout Processed - MTG Marketplace',
-        html: emailHtml
-      })
+      await sendSellerPayoutNotification(
+        seller.email,
+        {
+          amount: payout.amount,
+          date: payout.processed_at || new Date(),
+          method: payout.payout_method || 'Bank Transfer',
+          periodStart: payout.period_start,
+          periodEnd: payout.period_end,
+          orderCount: earnings.totalOrders,
+          platformFees: earnings.platformCommission
+        },
+        seller.display_name
+      )
     } catch (error) {
       console.error('Error sending payout notification:', error)
     }
@@ -714,14 +694,17 @@ class SellerPayoutService {
         .select('email')
         .eq('role', 'admin')
 
-      for (const admin of admins) {
-        await this.transporter.sendMail({
-          from: process.env.FROM_EMAIL,
-          to: admin.email,
-          subject: 'Automatic Payout Summary - MTG Marketplace',
-          html: emailHtml
-        })
-      }
+      const adminEmails = admins.map(a => a.email)
+
+      await sendAdminSystemAlert(
+        adminEmails,
+        {
+          type: 'Automatic Payout Summary',
+          message: `Automated payout processing completed. Successful: ${successful.length}, Failed: ${failed.length}, Total: $${totalAmount.toFixed(2)} CAD`,
+          severity: failed.length > 0 ? 'medium' : 'low',
+          actionRequired: failed.length > 0 ? 'Review failed payouts in admin panel' : 'No action required'
+        }
+      )
     } catch (error) {
       console.error('Error sending admin payout summary:', error)
     }
@@ -732,33 +715,7 @@ class SellerPayoutService {
    */
   async sendFailedPayoutAlert(failedPayouts) {
     try {
-      const emailHtml = `
-        <h2>Failed Payout Alert</h2>
-        <p>The following payouts have failed in the last 24 hours and require attention:</p>
-        
-        <table style="border-collapse: collapse; width: 100%;">
-          <thead>
-            <tr style="background: #f9f9f9;">
-              <th style="border: 1px solid #ddd; padding: 8px;">Seller</th>
-              <th style="border: 1px solid #ddd; padding: 8px;">Amount</th>
-              <th style="border: 1px solid #ddd; padding: 8px;">Reason</th>
-              <th style="border: 1px solid #ddd; padding: 8px;">Failed At</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${failedPayouts.map(payout => `
-              <tr>
-                <td style="border: 1px solid #ddd; padding: 8px;">${payout.profiles.display_name}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${payout.amount}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${payout.failure_reason || 'Unknown'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${new Date(payout.failed_at).toLocaleString()}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <p>Please review these payouts in the admin dashboard and take appropriate action.</p>
-      `
+      if (!failedPayouts || failedPayouts.length === 0) return
 
       // Get admin emails
       const { data: admins } = await supabase
@@ -766,14 +723,21 @@ class SellerPayoutService {
         .select('email')
         .eq('role', 'admin')
 
-      for (const admin of admins) {
-        await this.transporter.sendMail({
-          from: process.env.FROM_EMAIL,
-          to: admin.email,
-          subject: 'URGENT: Failed Payout Alert - MTG Marketplace',
-          html: emailHtml
-        })
-      }
+      if (!admins || admins.length === 0) return
+
+      const adminEmails = admins.map(a => a.email)
+      const totalFailed = failedPayouts.length
+      const totalAmount = failedPayouts.reduce((sum, p) => sum + parseFloat(p.amount), 0)
+
+      await sendAdminSystemAlert(
+        adminEmails,
+        {
+          type: 'Failed Payout Alert',
+          message: `${totalFailed} payout(s) failed in the last 24 hours totaling $${totalAmount.toFixed(2)} CAD. Immediate attention required.`,
+          severity: 'high',
+          actionRequired: 'Review failed payouts in admin panel and contact affected sellers'
+        }
+      )
     } catch (error) {
       console.error('Error sending failed payout alert:', error)
     }

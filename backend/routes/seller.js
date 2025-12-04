@@ -7,7 +7,7 @@ import csv from 'csv-parser'
 import { Readable } from 'stream'
 import sharp from 'sharp'
 import path from 'path'
-import nodemailer from 'nodemailer'
+import { sendSellerApprovalEmail, sendSellerInfoRequest, sendAdminNewSellerApplicationNotification } from '../services/emailServiceMailgun.js'
 
 const router = express.Router()
 
@@ -751,16 +751,7 @@ router.get('/stats', requireApprovedSeller, async (req, res) => {
   }
 })
 
-// Email transporter setup
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-})
+// Email service now using Mailgun templates via emailServiceMailgun.js
 
 // Middleware to check admin role
 const requireAdmin = async (req, res, next) => {
@@ -984,27 +975,13 @@ router.post('/seller-applications/:id/approve', async (req, res) => {
 
       // Send approval email
       if (application.profiles?.email) {
-        await transporter.sendMail({
-          from: process.env.FROM_EMAIL,
-          to: application.profiles.email,
-          subject: 'Seller Application Approved - MTG Marketplace',
-          html: `
-            <h2>Congratulations! Your seller application has been approved.</h2>
-            <p>Hi ${application.profiles.display_name},</p>
-            <p>We're excited to let you know that your seller application has been approved!</p>
-            <p><strong>Seller Tier:</strong> ${seller_tier}</p>
-            <p>You can now:</p>
-            <ul>
-              <li>Create and manage card listings</li>
-              <li>Receive and process orders</li>
-              <li>Access seller analytics and tools</li>
-              <li>Set up your payout preferences</li>
-            </ul>
-            <p>Get started by visiting your <a href="${process.env.FRONTEND_URL}/seller">Seller Dashboard</a></p>
-            <p>Welcome to the MTG Marketplace community!</p>
-            ${notes ? `<p><strong>Additional Notes:</strong> ${notes}</p>` : ''}
-          `
-        })
+        await sendSellerApprovalEmail(
+          application.profiles.email,
+          application.profiles.display_name,
+          true,
+          seller_tier,
+          notes
+        )
       }
 
       res.json({
@@ -1081,21 +1058,13 @@ router.post('/seller-applications/:id/reject', async (req, res) => {
 
     // Send rejection email
     if (application.profiles?.email) {
-      await transporter.sendMail({
-        from: process.env.FROM_EMAIL,
-        to: application.profiles.email,
-        subject: 'Seller Application Update - MTG Marketplace',
-        html: `
-          <h2>Seller Application Update</h2>
-          <p>Hi ${application.profiles.display_name},</p>
-          <p>Thank you for your interest in becoming a seller on MTG Marketplace.</p>
-          <p>After reviewing your application, we are unable to approve it at this time.</p>
-          <p><strong>Reason:</strong> ${reason}</p>
-          ${notes ? `<p><strong>Additional Notes:</strong> ${notes}</p>` : ''}
-          <p>You may reapply after addressing the concerns mentioned above.</p>
-          <p>If you have any questions, please contact our support team.</p>
-        `
-      })
+      await sendSellerApprovalEmail(
+        application.profiles.email,
+        application.profiles.display_name,
+        false,
+        '',
+        `${reason}${notes ? ` - ${notes}` : ''}`
+      )
     }
 
     res.json({
@@ -1160,24 +1129,12 @@ router.post('/seller-applications/:id/request-info', async (req, res) => {
 
     // Send info request email
     if (application.profiles?.email) {
-      const docList = required_documents && required_documents.length > 0 
-        ? `<ul>${required_documents.map(doc => `<li>${doc}</li>`).join('')}</ul>`
-        : ''
-
-      await transporter.sendMail({
-        from: process.env.FROM_EMAIL,
-        to: application.profiles.email,
-        subject: 'Additional Information Required - Seller Application',
-        html: `
-          <h2>Additional Information Required</h2>
-          <p>Hi ${application.profiles.display_name},</p>
-          <p>We're reviewing your seller application and need some additional information:</p>
-          <p>${message}</p>
-          ${docList ? `<p><strong>Required Documents:</strong></p>${docList}` : ''}
-          <p>Please log in to your account and upload the requested information to continue the review process.</p>
-          <p><a href="${process.env.FRONTEND_URL}/seller/application">Update Application</a></p>
-        `
-      })
+      await sendSellerInfoRequest(
+        application.profiles.email,
+        application.profiles.display_name,
+        message,
+        required_documents || []
+      )
     }
 
     res.json({

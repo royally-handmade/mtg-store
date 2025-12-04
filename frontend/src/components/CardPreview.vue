@@ -12,11 +12,16 @@
         class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
     </div>
     <div class="p-4">
-      <TreatmentBadge v-if="card.treatment" :treatment="card.treatment" />
+
       <h3 class="font-semibold text-lg mb-1 truncate">{{ card.name }}</h3>
-      <p class="text-sm text-gray-600 mb-2">{{ card.set_number.toUpperCase() }} • {{ card.rarity.toUpperCase() }}</p>
+      <p class="text-sm text-gray-600 font-semibold">{{ card.set_number.toUpperCase() }} • <span
+          :class="getRarityClass(card.rarity)"
+          class="inline-flex px-1.5 py-0.5 text-xs font-semibold rounded uppercase">
+          {{ card.rarity.replace('_', ' ') }}
+        </span> • #{{ card.card_number }}</p>
+
       <div class="flex justify-between items-center">
-        <span v-if="card.market_price" class="text-md font-bold text-green-600">
+        <span v-if="card.market_price" class="text-lg font-mono font-semibold text-green-800 mt-1 mb-2">
           ${{ card.market_price }} CAD
         </span>
         <!-- <button
@@ -26,6 +31,21 @@
         >
           {{ addingToCart ? 'Adding...' : 'Quick Add' }}
         </button>-->
+      </div>
+      <div class="flex flex-wrap gap-1">
+        <!-- Card Treatment (foil, etched, etc.) -->
+        <TreatmentBadge v-if="card.treatment && card.treatment !== 'foil'" :treatment="card.treatment" condensed
+          size="xs" />
+
+        <!-- Border Treatment (borderless) -->
+        <TreatmentBadge v-if="card.border_color === 'borderless'" treatment="borderless" condensed size="xs" />
+
+        <!-- Frame Effects (showcase, extended-art, etc.) -->
+        <TreatmentBadge v-if="card.frame_effects" :treatment="card.frame_effects" condensed size="xs" />
+
+        <!-- Promo Types -->
+        <TreatmentBadge v-if="card.promo_types && card.promo_types !== 'universesbeyond'" :treatment="card.promo_types"
+          condensed size="xs" />
       </div>
     </div>
   </div>
@@ -50,6 +70,18 @@
   const cartStore = useCartStore()
   const toast = useToast()
   const addingToCart = ref(false)
+
+  const getRarityClass = (rarity) => {
+    const rarityClasses = {
+      common: 'bg-gray-100 text-black',
+      uncommon: 'bg-slate-300 text-slate-800',
+      rare: 'bg-amber-200 text-amber-900',
+      mythic: 'bg-orange-200 text-orange-900',
+      mythic_rare: 'bg-red-100 text-red-800',
+      special: 'bg-purple-100 text-purple-800'
+    }
+    return rarityClasses[rarity] || 'bg-gray-100 text-gray-800'
+  }
 
   const quickAddToCart = async () => {
     addingToCart.value = true

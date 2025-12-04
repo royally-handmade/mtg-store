@@ -2,7 +2,7 @@ import express from 'express'
 import { supabase } from '../server.js'
 import { authenticateUser } from '../middleware/auth.js'
 import { wishlistRateLimiter } from '../middleware/rateLimiter.js'
-import { sendPriceAlert } from '../services/emailService.js'
+import { sendPriceAlert } from '../services/emailServiceMailgun.js'
 
 const router = express.Router()
 

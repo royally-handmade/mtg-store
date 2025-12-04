@@ -1,11 +1,11 @@
 import express from 'express'
 import { supabase, supabaseAdmin } from '../server.js'
 import { authenticateUser } from '../middleware/auth.js'
-import { 
-  sendPasswordResetEmail, 
+import {
+  sendPasswordResetEmail,
   sendPasswordResetConfirmation,
-  sendAccountSecurityAlert 
-} from '../services/emailService.js'
+  sendAccountSecurityAlert
+} from '../services/emailServiceMailgun.js'
 import { 
   resetPasswordLimiter, 
   updatePasswordLimiter, 

@@ -144,6 +144,14 @@ import { useAuthStore } from '@/stores/auth'
 import { MagnifyingGlassIcon, ShoppingCartIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import api from '@/lib/api'
 import CardPreview from '@/components/CardPreview.vue'
+import { useSeo } from '@/composables/useSeo'
+
+// Set SEO meta tags for the home page
+useSeo({
+  title: 'Coastal Storm Games',
+  description: 'Your premier trading card marketplace in the stormy pacific northwest. Build and buy your decklist, create alerts for cards on your buy-list, and get insights compared to other TCG marketplaces.',
+  keywords: 'MTG marketplace, Magic The Gathering, buy MTG cards, sell MTG cards, MTG singles, trading cards, snapcaster'
+})
 
 const authStore = useAuthStore()
 

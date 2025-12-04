@@ -17,7 +17,7 @@
       </div>
     </div>
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-6">
       <CardPreview v-for="card in paginatedCards" :key="card.id" :card="card" />
     </div>
     
@@ -34,6 +34,14 @@ import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/lib/api'
 import CardPreview from '@/components/CardPreview.vue'
 import Pagination from '@/components/Pagination.vue'
+import { useSeo } from '@/composables/useSeo'
+
+// Set SEO meta tags for the cards browse page
+useSeo({
+  title: 'Browse Magic: The Gathering Cards | MTG Marketplace',
+  description: 'Browse and search thousands of Magic: The Gathering singles. Filter by set, rarity, and find the best prices from trusted sellers.',
+  keywords: 'MTG cards, Magic cards, buy MTG singles, Magic The Gathering browse, card catalog'
+})
 
 const cards = ref([])
 const sets = ref([])
